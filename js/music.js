@@ -91,10 +91,16 @@ export class Music {
     }
     this.setMood(mood, now);
 
+    // special waves color the wave track: muffled in a blackout or fog, faster in a rush
+    this.special = mood === 'wave' ? game.waves.special : null;
     const paused = s === 'paused';
+    const cutoff = paused ? 650 : this.special === 'blackout' ? 1300 : this.special === 'fog' ? 2400 : 18000;
+    if (cutoff !== this.cutoff) {
+      this.cutoff = cutoff;
+      this.tone.frequency.setTargetAtTime(cutoff, now, 0.25);
+    }
     if (paused !== this.paused) {
       this.paused = paused;
-      this.tone.frequency.setTargetAtTime(paused ? 650 : 18000, now, 0.12);
       if (this.enabled) this.out.gain.setTargetAtTime(paused ? VOLUME * 0.45 : VOLUME, now, 0.12);
     }
 
@@ -114,7 +120,8 @@ export class Music {
       // after a hidden tab or a long hitch, don't try to play the missed notes
       if (m.next < now - 0.1) m.next = now + 0.05;
       const def = { wave: WAVE, boss: BOSS, calm: CALM }[m.name];
-      const stepDur = 60 / (def ? def.bpm : 60) / 4;
+      const bpm = (def ? def.bpm : 60) * (m.name === 'wave' && this.special === 'rush' ? 1.2 : 1);
+      const stepDur = 60 / bpm / 4;
       while (m.next < now + LOOKAHEAD) {
         this[m.name](m.step % 16, Math.floor(m.step / 16), m.next, stepDur, m.bus);
         m.next += stepDur;

@@ -3,6 +3,7 @@ import { CHARACTERS, WEAPONS } from './data.js';
 import { SPR, icon } from './sprites.js';
 import { UPGRADE_BY_ID, RARITY, CATEGORY } from './upgrades.js';
 import { PLAYER_COLORS } from './config.js';
+import { SPECIALS } from './waves.js';
 import { fmtInt } from './utils.js';
 import { $, el, pix } from './dom.js';
 import { buildGuide } from './guide.js';
@@ -373,12 +374,15 @@ export class UI {
     else if (prop === 'width') node.style.width = value;
     else if (prop === 'height') node.style.height = value;
     else if (prop === 'class') node.className = value;
+    else if (prop === 'color') node.style.color = value;
   }
 
   updateHUD(game) {
     if (!this.panels || game.state === 'title') return;
     const w = game.waves;
-    this.set('wave', $('hud-wave'), 'text', `WAVE ${w.wave}`);
+    const sp = SPECIALS[w.special];
+    this.set('wave', $('hud-wave'), 'text', sp ? `WAVE ${w.wave} · ${sp.name}` : `WAVE ${w.wave}`);
+    this.set('wavec', $('hud-wave'), 'color', sp ? sp.color : '');
     const left = w.state === 'fight' || w.state === 'intro' ? `${w.remaining} ZOMBIES LEFT` : w.state === 'cleared' ? 'CLEARED' : '';
     this.set('left', $('hud-left'), 'text', left);
     this.set('score', $('hud-score'), 'text', fmtInt(game.stats.score));

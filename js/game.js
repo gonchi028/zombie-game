@@ -6,12 +6,12 @@ import { Lighting, buildCone } from './lighting.js';
 import { Decals, Particles } from './particles.js';
 import { Player, MAX_FLARES } from './player.js';
 import { Zombie } from './zombie.js';
-import { WaveManager } from './waves.js';
+import { WaveManager, SPECIALS } from './waves.js';
 import { rollChoices } from './upgrades.js';
 import { SPR } from './sprites.js';
 import { drawText } from './font.js';
 import { MotionTracker } from './tracker.js';
-import { clamp, dist, dist2, rand, chance, choice, TAU, pixCircle, pixEllipse, pixRing, storage, weightedPick } from './utils.js';
+import { clamp, dist, dist2, rand, chance, choice, TAU, pixCircle, pixEllipse, pixRing, storage, weightedPick, makeCanvas } from './utils.js';
 
 const G = 420; // gravity for thrown things
 // Road flare: a held item that pulls nearby zombies off the players, then pops.
@@ -78,6 +78,8 @@ export class Game {
   }
 
   resetEntities() {
+    this.lightsOut = 0; // blackout progress, 0..1
+    this.fog = 0; // fog density, 0..1
     this.players = [];
     this.zombies = [];
     this.bullets = [];
@@ -139,15 +141,20 @@ export class Game {
   announceWave() {
     const n = this.waves.wave;
     const boss = this.waves.isBossWave;
-    this.ui.banner(`WAVE ${n}`, boss ? 'SOMETHING BIG IS COMING' : choice(WAVE_FLAVOR), boss ? '#ff4a3a' : '#f3e6c8');
+    const sp = SPECIALS[this.waves.special];
+    if (sp) this.ui.banner(`WAVE ${n} · ${sp.name}`, sp.sub, sp.color);
+    else this.ui.banner(`WAVE ${n}`, boss ? 'SOMETHING BIG IS COMING' : choice(WAVE_FLAVOR), boss ? '#ff4a3a' : '#f3e6c8');
     this.sfx.play('wave', 0.9);
+    if (this.waves.special === 'blackout') this.sfx.play('powerdown', 0.9);
   }
 
   onWaveCleared() {
     const n = this.waves.wave;
-    const bonus = 100 * n;
+    // special waves pay double
+    const special = !!this.waves.special;
+    const bonus = 100 * n * (special ? 2 : 1);
     this.stats.score += bonus;
-    this.ui.banner(`WAVE ${n} CLEARED`, `+${bonus} SURVIVAL BONUS`, '#8aff8a');
+    this.ui.banner(`WAVE ${n} CLEARED`, `+${bonus} SURVIVAL BONUS${special ? ' (x2)' : ''}`, '#8aff8a');
     this.sfx.play('clear', 0.9);
     for (const pk of this.pickups) pk.magnet = true;
   }
@@ -758,6 +765,12 @@ export class Game {
   }
 
   updateLightAnim(dt) {
+    // blackout: lights flicker out over ~2s and come back once the wave is cleared; fog rolls in slower
+    const w = this.waves;
+    const live = this.state !== 'title' && (w.state === 'intro' || w.state === 'fight');
+    const toward = (v, target, rate) => (v < target ? Math.min(target, v + rate * dt) : Math.max(target, v - rate * dt));
+    this.lightsOut = toward(this.lightsOut || 0, live && w.special === 'blackout' ? 1 : 0, 0.5);
+    this.fog = toward(this.fog || 0, live && w.special === 'fog' ? 1 : 0, 0.35);
     for (const l of this.map.lights) {
       if (!l.flicker) continue;
       l.fT = (l.fT ?? rand(0, 2)) - dt;
@@ -1322,6 +1335,7 @@ export class Game {
     this.particles.draw(g, cx, cy);
 
     this.drawLighting(g, cx, cy);
+    if (this.fog > 0) this.drawFog(g, cx, cy);
     this.particles.drawAdditive(g, cx, cy);
     this.drawBullets(g, cx, cy);
     this.drawBolts(g, cx, cy);
@@ -1370,6 +1384,51 @@ export class Game {
       pixEllipse(g, pk.x - cx, pk.y - cy + 2, 4, 1, 'rgba(0,0,0,0.4)');
       g.drawImage(img, x, y - 2);
     }
+  }
+
+  // Two layers of drifting fog that stay put in the world, with a clearer pocket around each survivor.
+  drawFog(g, cx, cy) {
+    if (!this.fogTex) {
+      const [tex, t] = makeCanvas(240, 135);
+      for (let i = 0; i < 70; i++) {
+        const x = rand(0, 240), y = rand(0, 135), r = rand(10, 34);
+        for (const ox of [-240, 0, 240]) for (const oy of [-135, 0, 135]) {
+          const grad = t.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, r);
+          grad.addColorStop(0, 'rgba(112,122,134,0.5)');
+          grad.addColorStop(1, 'rgba(112,122,134,0)');
+          t.fillStyle = grad;
+          t.fillRect(x + ox - r, y + oy - r, r * 2, r * 2);
+        }
+      }
+      this.fogTex = tex;
+      [this.fogBuf, this.fogCtx] = makeCanvas(VIEW_W, VIEW_H);
+    }
+    const f = this.fogCtx;
+    f.globalCompositeOperation = 'source-over';
+    f.clearRect(0, 0, VIEW_W, VIEW_H);
+    f.fillStyle = 'rgba(52,58,68,0.5)';
+    f.fillRect(0, 0, VIEW_W, VIEW_H);
+    // texture is drawn at 2x, so it tiles every 480x270 screen pixels
+    for (const [speed, alpha, par] of [[7, 0.75, 1], [-4, 0.5, 0.7]]) {
+      const ox = -(((cx * par + this.time * speed) % 480) + 480) % 480;
+      const oy = -(((cy * par + this.time * speed * 0.3) % 270) + 270) % 270;
+      f.globalAlpha = alpha;
+      for (let x = ox; x < VIEW_W; x += 480) for (let y = oy; y < VIEW_H; y += 270) f.drawImage(this.fogTex, x, y, 480, 270);
+    }
+    f.globalAlpha = 1;
+    f.globalCompositeOperation = 'destination-out';
+    for (const p of this.players) {
+      if (p.state === 'dead') continue;
+      const x = p.x - cx, y = p.y - cy - 4;
+      const grad = f.createRadialGradient(x, y, 8, x, y, 64);
+      grad.addColorStop(0, 'rgba(0,0,0,0.85)');
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      f.fillStyle = grad;
+      f.fillRect(x - 64, y - 64, 128, 128);
+    }
+    g.globalAlpha = this.fog;
+    g.drawImage(this.fogBuf, 0, 0);
+    g.globalAlpha = 1;
   }
 
   drawWeaponDrops(g, cx, cy) {
@@ -1504,6 +1563,12 @@ export class Game {
     for (const l of this.map.lights) {
       const x = l.x - cx, y = l.y - cy;
       if (l.broken || !inView(x, y, l.r)) continue;
+      if (this.lightsOut > 0) {
+        // each light has its own moment to die, and stutters just before it goes
+        const h = ((l.x * 7 + l.y * 13) % 97) / 97;
+        if (this.lightsOut > h + 0.12) continue;
+        if (this.lightsOut > h && Math.random() < 0.6) continue;
+      }
       let intensity = l.intensity;
       let color = l.color;
       if (l.flicker && l.off) intensity *= 0.12;
@@ -1525,8 +1590,8 @@ export class Game {
     for (const p of this.players) {
       if (p.state === 'dead') continue;
       const x = p.x - cx, y = p.y - cy;
-      lights.push({ x, y: y - 2, r: 44, intensity: 0.6 });
-      if (p.alive) cones.push(buildCone(this.map, p.x, p.y - 3, p.aim, 0.42, 165, cx, cy));
+      lights.push({ x, y: y - 2, r: 44 - this.fog * 8, intensity: 0.6 });
+      if (p.alive) cones.push(buildCone(this.map, p.x, p.y - 3, p.aim, 0.42, 165 - this.fog * 70, cx, cy));
       if (p.rage > 0) glows.push({ x, y: y - 6, r: 22, color: '#ff2a2a', alpha: 0.35 });
       for (const d of p.drones) glows.push({ x: d.x - cx, y: d.y - cy, r: 10, color: '#4fb2ff', alpha: 0.4 });
     }
@@ -1592,7 +1657,7 @@ export class Game {
       lights.push({ x, y, r: 16, intensity: 0.55 });
       glows.push({ x, y: y - 3, r: 12, color: col, alpha: 0.3 + 0.1 * Math.sin(t * 6) });
     }
-    this.lighting.render(g, AMBIENT_DARK, lights, cones, glows);
+    this.lighting.render(g, AMBIENT_DARK + this.lightsOut * 0.12, lights, cones, glows);
   }
 
   drawWorldUI(g, cx, cy) {

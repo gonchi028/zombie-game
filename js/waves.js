@@ -1,8 +1,32 @@
 // Builds each wave's spawn queue and trickles zombies in from outside the camera.
 import { TILE, VIEW_W, VIEW_H } from './config.js';
-import { rand, randInt, shuffle, weightedPick } from './utils.js';
+import { choice, rand, randInt, shuffle, weightedPick } from './utils.js';
 
 export const BOSS_EVERY = 5;
+export const SPECIAL_EVERY = 3;
+
+// Special waves twist the rules. From wave 3, every 3rd wave (never a boss wave) is one of these,
+// and never the same one twice in a row. Surviving one pays a double clear bonus.
+export const SPECIALS = {
+  blackout: {
+    name: 'BLACKOUT', sub: 'THE POWER IS OUT', color: '#9aa8ff', from: 3,
+    desc: 'The street lights die. Only flashlights, fire and glowing eyes cut the dark.',
+  },
+  rush: {
+    name: 'THE RUSH', sub: 'THEY ARE FAST. KEEP MOVING', color: '#ff7a4a', from: 3,
+    desc: 'Only runners and zombie dogs, and lots of them, pouring in fast.',
+    mix: { runner: 1, dog: 0.6 }, count: 1.2, interval: 0.6,
+  },
+  fog: {
+    name: 'FOG', sub: 'YOU WILL NOT SEE THEM COMING', color: '#c8d2da', from: 6,
+    desc: 'Thick fog hides everything past arm\u2019s length. The Motion Tracker still sees them.',
+  },
+  tank: {
+    name: 'HEAVY HITTERS', sub: 'BRUTES AND BLOATERS ONLY', color: '#e8c24a', from: 6,
+    desc: 'Only brutes and bloaters. Far fewer zombies, but every one of them hits hard.',
+    mix: { brute: 1, bloater: 0.6 }, count: 0.3, interval: 1.6,
+  },
+};
 
 function mix(n) {
   return {
@@ -23,6 +47,14 @@ export class WaveManager {
     this.total = 0;
     this.killed = 0;
     this.queue = [];
+    this.special = null; // id from SPECIALS, or null
+    this.lastSpecial = null;
+  }
+
+  pickSpecial(n) {
+    if (n < SPECIAL_EVERY || n % SPECIAL_EVERY !== 0 || n % BOSS_EVERY === 0) return null;
+    const ids = Object.keys(SPECIALS).filter((id) => SPECIALS[id].from <= n && id !== this.lastSpecial);
+    return ids.length ? choice(ids) : null;
   }
 
   get isBossWave() {
@@ -37,8 +69,12 @@ export class WaveManager {
     this.wave = n;
     this.state = 'intro';
     this.timer = 3;
-    const count = Math.min(180, Math.round((10 + n * 5 + n * n * 0.25) * (players > 1 ? 1.5 : 1)));
-    const weights = mix(n);
+    this.special = this.pickSpecial(n);
+    if (this.special) this.lastSpecial = this.special;
+    const sp = SPECIALS[this.special] || {};
+    const base = (10 + n * 5 + n * n * 0.25) * (players > 1 ? 1.5 : 1);
+    const count = Math.max(6, Math.min(180, Math.round(base * (sp.count || 1))));
+    const weights = sp.mix || mix(n);
     const types = Object.keys(weights).filter((t) => weights[t] > 0);
     const queue = [];
     for (let i = 0; i < count; i++) queue.push(weightedPick(types, (t) => weights[t]));
@@ -52,7 +88,7 @@ export class WaveManager {
     this.killed = 0;
     this.spawnT = 0.5;
     this.maxAlive = Math.min(95, 32 + n * 4);
-    this.interval = Math.max(0.16, 1.05 - n * 0.07);
+    this.interval = Math.max(0.16, 1.05 - n * 0.07) * (sp.interval || 1);
     this.scale = {
       hp: (1 + (n - 1) * 0.12 + Math.max(0, n - 10) * 0.08) * (players > 1 ? 1.15 : 1),
       speed: Math.min(1.35, 1 + (n - 1) * 0.025),

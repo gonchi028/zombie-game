@@ -3,6 +3,7 @@
 import { CHARACTERS, WEAPONS } from './data.js';
 import { SPR, icon } from './sprites.js';
 import { CATEGORY } from './upgrades.js';
+import { SPECIALS, BOSS_EVERY, SPECIAL_EVERY } from './waves.js';
 import { el, pix } from './dom.js';
 
 const TIER_WAVE = { 1: 1, 2: 3, 3: 5 }; // matches pickDropWeapon() in game.js
@@ -199,6 +200,40 @@ function zombiesTab() {
   return grid;
 }
 
+const WAVE_RULES = [
+  { title: 'EVERY WAVE', img: () => SPR.walker[0].frames[0], desc: 'Bigger and tougher than the last. Clear it to pick an upgrade.' },
+  { title: 'BOSS WAVES', img: () => SPR.boss[0].frames[0], desc: `Every ${BOSS_EVERY}th wave brings the Abomination. From wave 10, two of them.` },
+  { title: 'SPECIAL WAVES', img: () => icon('bolt', { y: '#9aa8ff', Y: '#5a6ad8' }), desc: `Every ${SPECIAL_EVERY}rd wave from wave ${SPECIAL_EVERY} twists the rules. Survive it for a double bonus.` },
+];
+// which sprite stands in for each special wave in the guide
+const SPECIAL_ART = { blackout: () => SPR.walker[2].frames[0], rush: () => SPR.dog[0].frames[0], fog: () => SPR.spitter[0].frames[0], tank: () => SPR.brute[0].frames[0] };
+
+function wavesTab() {
+  const box = el('div', 'g-waves');
+  const rules = el('div', 'g-grid g-rules');
+  for (const r of WAVE_RULES) {
+    const c = el('div', 'g-card g-rule');
+    const art = el('div', 'g-art');
+    art.append(pix(r.img(), fit(r.img(), 32)));
+    const txt = el('div', 'g-text');
+    txt.append(el('div', 'g-title', r.title), el('div', 'g-desc', r.desc));
+    c.append(art, txt);
+    rules.append(c);
+  }
+  const grid = el('div', 'g-grid g-specials');
+  for (const [id, sp] of Object.entries(SPECIALS)) {
+    const c = el('div', `g-card g-special sp-${id}`);
+    c.style.setProperty('--sc', sp.color);
+    c.append(el('span', 'g-badge', `WAVE ${sp.from}+`));
+    const art = el('div', 'g-art');
+    art.append(pix(SPECIAL_ART[id](), 2));
+    c.append(art, el('div', 'g-title', sp.name), el('div', 'g-desc', sp.desc));
+    grid.append(c);
+  }
+  box.append(rules, el('h3', 'g-sub', 'SPECIAL WAVES'), grid);
+  return box;
+}
+
 function itemsTab() {
   const box = el('div', 'g-items');
   const grid = el('div', 'g-grid g-pickups');
@@ -253,6 +288,7 @@ export const GUIDE_TABS = [
   { id: 'survivors', label: 'SURVIVORS', build: survivorsTab },
   { id: 'weapons', label: 'WEAPONS', build: weaponsTab },
   { id: 'zombies', label: 'ZOMBIES', build: zombiesTab },
+  { id: 'waves', label: 'WAVES', build: wavesTab },
   { id: 'items', label: 'ITEMS', build: itemsTab },
   { id: 'controls', label: 'CONTROLS', build: controlsTab },
 ];

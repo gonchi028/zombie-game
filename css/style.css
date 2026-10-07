@@ -652,6 +652,24 @@ kbd {
 .g-zombie.boss .g-title { color: #ff5a4e; }
 .g-zombie.boss .g-badge { color: #ff5a4e; }
 
+/* waves */
+.g-rules { grid-template-columns: repeat(3, 1fr); }
+.g-rule { display: flex; align-items: center; gap: 0.7em; }
+.g-rule .g-art { width: 5em; height: 5em; flex: none; }
+.g-rule .g-text { display: grid; gap: 0.25em; }
+.g-specials { grid-template-columns: repeat(4, 1fr); }
+.g-special { display: flex; flex-direction: column; align-items: center; gap: 0.3em; text-align: center; padding-top: 1.1em; border-color: color-mix(in srgb, var(--sc) 45%, #000); }
+.g-special .g-art { height: 5.4em; width: 100%; }
+.g-special .g-title { color: var(--sc); }
+.g-special .g-badge { color: var(--sc); }
+/* each special wave's art hints at what it does */
+.sp-blackout .g-art { background: radial-gradient(circle at 50% 55%, rgba(154, 168, 255, 0.12), #05050a 70%); }
+.sp-blackout canvas { filter: brightness(0.35) saturate(0.5); }
+.sp-fog .g-art { background: radial-gradient(circle, rgba(200, 210, 218, 0.25), transparent 70%); }
+.sp-fog canvas { opacity: 0.45; filter: blur(calc(var(--s) * 0.6)); }
+.sp-rush .g-art { background: repeating-linear-gradient(100deg, transparent 0 0.8em, rgba(255, 122, 74, 0.12) 0.8em 1em); }
+.sp-tank .g-art { background: radial-gradient(circle at 50% 65%, rgba(232, 194, 74, 0.2), transparent 70%); }
+
 /* items */
 .g-pickups { grid-template-columns: repeat(3, 1fr); }
 .g-item { display: flex; align-items: center; gap: 0.7em; }

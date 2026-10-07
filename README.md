@@ -48,6 +48,8 @@ no dependencies. Open it in a browser and play.
   gun and minigun. Stronger guns turn up in later waves.
 - **Waves that escalate.** Seven zombie types, including the Abomination, a boss that charges,
   slams and summons every 5th wave.
+- **Special waves** twist the rules every 3rd wave: a city-wide blackout, creeping fog, a rush of
+  runners and dogs, or a wave of brutes and bloaters. Survive one for a double bonus.
 - **33 upgrade cards** to build your run, color-coded by what they boost: stat powerups,
   trade-off modifiers and build-defining epics like orbiting buzzsaws and combat drones.
 - **Road flares** turn up when you're swarmed. Throw one and nearby zombies chase it instead of you.
@@ -59,7 +61,8 @@ no dependencies. Open it in a browser and play.
 - **Juicy animation.** Characters squash, stretch, lean and bob. Zombies flinch from hits and
   ragdoll across the street when they die.
 - **Solo or local co-op**, with revives. Keyboard + mouse, arrow keys with auto-aim, or gamepads.
-- **A built-in How to Play guide** covering every survivor, weapon, zombie, pickup and control.
+- **A built-in How to Play guide** covering every survivor, weapon, zombie, wave type, pickup and
+  control.
 
 ## Quick start
 
@@ -152,6 +155,17 @@ You carry two guns. **Slot 1** is your survivor's signature gun, with unlimited 
 Every wave brings more zombies and tougher ones: more health, more speed and more damage. Up to 95
 zombies can be alive at once in later waves. From wave 10, boss waves bring two Abominations.
 Co-op waves are 50% bigger.
+
+**Special waves.** From wave 3, every 3rd wave twists the rules. It's never a boss wave and never
+the same twist twice in a row. Surviving one pays a **double survival bonus**, and the soundtrack
+reacts to each.
+
+| Special wave | From | What happens |
+| --- | --- | --- |
+| **Blackout** | Wave 3 | The street lights flicker and die. Only flashlights, fire and glowing eyes cut the dark. The lights come back when the wave is cleared. |
+| **The Rush** | Wave 3 | Only runners and zombie dogs, 20% more of them, arriving almost twice as fast. The music speeds up. |
+| **Fog** | Wave 6 | Thick fog rolls in. You can only see clearly close to your survivor, and flashlights reach less far. The Motion Tracker still sees through it. |
+| **Heavy Hitters** | Wave 6 | Only brutes and bloaters. About a third as many zombies, but each one hits hard. |
 
 Clearing a wave gives a score bonus. Before the next wave starts, every survivor gets a little
 health and ammo back, and fallen co-op partners rejoin. Your best wave and score are saved in the
@@ -306,7 +320,9 @@ js/
 ## Tweaking and modding
 
 - **Balance.** Weapon, survivor and zombie numbers live in `js/data.js`. Wave size and mix are in
-  `js/waves.js` (`mix()` and `start()`). Gun drop timing is at the top of `js/game.js`
+  `js/waves.js` (`mix()` and `start()`), and the special waves are in `SPECIALS` in the same file.
+  Each one sets its own zombie mix, size and spawn speed, and `SPECIAL_EVERY` controls how often
+  they come. Gun drop timing is at the top of `js/game.js`
   (`FIRST_DROP`, `DROP_EVERY`, `MAX_DROPS`), and which guns show up when is in `pickDropWeapon()`.
   Road flare timing and lure radius are next to them (`FLARE_TIME`, `LURE_R`).
 - **New gun.** Add an entry to `WEAPONS` in `js/data.js`, with a `tier` (1–3) so it can drop and a

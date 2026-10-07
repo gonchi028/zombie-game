@@ -255,6 +255,12 @@ export class Sfx {
         this._noise(t, 0.1, 0.35, 'lowpass', 900);
         [392, 523].forEach((f, i) => this._tone(t + 0.08 + i * 0.07, 0.1, 0.16, 'square', f));
         break;
+      case 'powerdown':
+        // the city's power dying: a hum that sags and cuts out
+        this._tone(t, 1.4, 0.3, 'sawtooth', 120, 30, 0.02);
+        this._tone(t, 1.4, 0.2, 'square', 60, 18, 0.02);
+        this._noise(t + 0.9, 0.25, 0.4, 'bandpass', 2500, 1.5);
+        break;
       case 'ping':
         this._tone(t, 0.25, 0.12, 'sine', 1180, 1150);
         break;
