@@ -48,7 +48,23 @@ function resume() {
   ui.showScreen(null);
   input.flush();
   game.state = 'playing';
+  guardBack();
 }
+
+// Phones: an edge swipe (iPhone Safari) or the back gesture would leave the page mid-run. While a
+// touch run is going, one extra history entry catches that first "back" and pauses the game instead;
+// a second "back" leaves as usual.
+let backGuard = false;
+function guardBack() {
+  if (!ui.touch || backGuard) return;
+  history.pushState({ lastLight: 'run' }, '');
+  backGuard = true;
+}
+window.addEventListener('popstate', () => {
+  if (!backGuard) return;
+  backGuard = false;
+  pause();
+});
 
 function toTitle() {
   game.startAttract();
@@ -75,6 +91,7 @@ const ui = new UI({
   },
   quit: toTitle,
   fullscreen: fullscreenButton,
+  autofire: () => ui.refreshAutoFire(touch.toggleAutoFire()),
   mute: () => ui.refreshMute(sfx.toggleMute()),
   music: () => ui.refreshMusic(music.toggle()),
 });
@@ -82,6 +99,7 @@ const ui = new UI({
 function startRun(mode, chars) {
   sfx.init();
   game.newRun(mode, chars, controllersFor(mode));
+  guardBack();
 }
 
 const touch = new TouchControls({ pause, fullscreen: fullscreenButton });
@@ -97,10 +115,14 @@ matchMedia('(orientation: portrait)').addEventListener('change', (e) => e.matche
 document.body.classList.toggle('no-fullscreen', !fullscreenSupported);
 document.body.classList.toggle('standalone', standalone);
 onFullscreenChange((on) => ui.refreshFullscreen(on));
+ui.refreshAutoFire(touch.autoFire);
+// phones held upright: tapping the "rotate" notice goes fullscreen, which also locks landscape on Android
+document.getElementById('rotate').addEventListener('click', () => fullscreenSupported && !isFullscreen() && toggleFullscreen());
 
 // Browsers only allow audio after a user gesture.
 const unlock = () => sfx.init();
-window.addEventListener('pointerdown', unlock);
+window.addEventListener('pointerdown', unlock); // mouse
+window.addEventListener('pointerup', unlock); // touch: browsers only count the end of a tap
 window.addEventListener('keydown', unlock);
 
 window.addEventListener('keydown', (e) => {

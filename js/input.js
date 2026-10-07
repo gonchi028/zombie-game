@@ -115,8 +115,8 @@ export class KeyboardMouseController {
     this.label = 'KEYBOARD + MOUSE';
   }
   // a click counts as using the keyboard + mouse, even without moving or shooting
-  touched() {
-    return this.input.mouse.pressed;
+  active(o) {
+    return isActive(o) || this.input.mouse.pressed;
   }
   read(player, game) {
     const i = this.input;
@@ -203,28 +203,52 @@ export class GamepadController {
 }
 
 // Phones and tablets: the on-screen sticks and buttons from touch.js. The aim stick also fires, with
-// a little aim assist since thumbs are less precise than a mouse.
+// a little aim assist since thumbs are less precise than a mouse. With the thumb off the aim stick, you
+// face the nearest zombie in sight and (with auto-fire on) shoot it, so the right thumb is free for
+// the buttons. Throws land on whatever you're aiming at.
+const AUTO_RANGE = 200; // how far (game px) auto-aim and auto-fire look for zombies
+
 export class TouchController {
   constructor(touch) {
     this.touch = touch;
     this.label = 'TOUCH';
     this.lastAim = 0;
   }
+  // Only real touches count as using this device. Auto-aim and auto-fire run on their own, so they must
+  // not pull the player away from a keyboard or gamepad.
+  active() {
+    const t = this.touch;
+    return t.move.id !== null || t.aim.id !== null || Object.keys(t.buttons).some((id) => t.hit(id));
+  }
+  // in touch mode, a run starts on touch (so auto-fire works before the first tap)
+  preferred() {
+    return this.touch.visible;
+  }
   read(player, game) {
     const t = this.touch;
     const o = emptyIntent();
+    if (!t.visible) return o; // not in touch mode: no auto-fire for mouse, keyboard or gamepad players
     [o.mx, o.my] = stick(t.move.vx, t.move.vy);
+    const aimAt = (z) => {
+      this.lastAim = Math.atan2(z.y - 4 - (player.y - 3), z.x - player.x);
+      o.aimDist = Math.hypot(z.x - player.x, z.y - player.y);
+    };
     const m = t.aim.mag;
     if (m > 0.15) {
       const a = Math.atan2(t.aim.vy, t.aim.vx);
       const z = assistTarget(player, game, a);
-      this.lastAim = z ? Math.atan2(z.y - 4 - (player.y - 3), z.x - player.x) : a;
+      if (z) aimAt(z);
+      else {
+        this.lastAim = a;
+        o.aimDist = 40 + m * 100; // how far a throw flies with nothing to aim at
+      }
       o.fire = m > 0.4;
-      o.aimDist = 40 + m * 100; // how far flares and grenades fly
-    } else if (o.mx || o.my) {
-      // thumb off the aim stick: face the nearest zombie, else where you walk (like a gamepad)
-      const z = nearestTarget(player, game, 150);
-      this.lastAim = z ? Math.atan2(z.y - 4 - (player.y - 3), z.x - player.x) : Math.atan2(o.my, o.mx);
+    } else {
+      const z = nearestTarget(player, game, AUTO_RANGE);
+      if (z) {
+        aimAt(z);
+        o.fire = t.autoFire && o.aimDist <= player.weapon.def.range;
+      } else if (o.mx || o.my) this.lastAim = Math.atan2(o.my, o.mx);
     }
     o.aim = this.lastAim;
     o.dash = t.hit('dash');
@@ -233,6 +257,8 @@ export class TouchController {
     o.reload = t.hit('reload');
     o.interact = o.reload; // the reload button turns into TAKE when a gun is in reach
     o.swap = t.hit('swap') ? 1 : 0;
+    // ...except the sentry turret, which belongs next to you, not in the middle of the horde
+    if (o.ability && player.char.ability === 'turret') o.aimDist = 60;
     return o;
   }
 }
@@ -244,6 +270,7 @@ export class HybridController {
   constructor(...ctrls) {
     this.ctrls = ctrls;
     this.current = 0;
+    this.used = false; // has any device been used yet this run?
   }
   get label() {
     return this.ctrls[this.current].label;
@@ -251,8 +278,16 @@ export class HybridController {
   read(player, game) {
     const intents = this.ctrls.map((c) => c.read(player, game));
     intents.forEach((o, i) => {
-      if (isActive(o) || this.ctrls[i].touched?.()) this.current = i;
+      if (this.ctrls[i].active ? this.ctrls[i].active(o) : isActive(o)) {
+        this.current = i;
+        this.used = true;
+      }
     });
+    // until a device is used, start on the one the screen is set up for (touch on phones and tablets)
+    if (!this.used) {
+      const i = this.ctrls.findIndex((c) => c.preferred?.());
+      if (i >= 0) this.current = i;
+    }
     const o = intents[this.current];
     o.pause = intents.some((x) => x.pause);
     return o;

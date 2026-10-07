@@ -25,6 +25,7 @@ html, body {
   height: 100%;
   background: #030305;
   overflow: hidden;
+  overscroll-behavior: none; /* no pull-to-refresh on phones, which would end the run */
 }
 
 body {
@@ -80,6 +81,7 @@ canvas.px {
 }
 .screen.active { display: flex; animation: fade-in 0.25s ease-out; }
 .screen.dim { background: rgba(4, 4, 8, 0.78); }
+.screen.arming { pointer-events: none; } /* see ARMED_SCREENS in ui.js */
 
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
@@ -800,7 +802,8 @@ body.touch .cd-key, body.touch .slot-key, body.touch #title-sound { display: non
 body.touch .hud-top { left: 3.8em; }
 body.touch:not(.no-fullscreen):not(.standalone) .hud-top { left: 7.2em; }
 
-#touch { position: absolute; inset: 0; touch-action: none; }
+/* the whole screen, so thumbs also work in the black bars at the sides of wide phones (touch.js) */
+#touch { position: fixed; inset: 0; z-index: 5; touch-action: none; font-size: calc(var(--s) * 7); color: var(--ink); }
 .tstick {
   position: absolute;
   width: calc(var(--s) * 68);

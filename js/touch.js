@@ -1,20 +1,29 @@
 // On-screen controls for phones and tablets. The move stick appears wherever the left thumb lands, the
 // aim stick does the same on the right half (pushing it far enough also fires), and the action buttons
 // sit around the aim stick. TouchController (input.js) turns this state into player 1's intents.
-import { VIEW_W, VIEW_H } from './config.js';
+//
+// The layer covers the whole screen, not just the 16:9 game: wide phones have black bars at the sides,
+// and that's exactly where thumbs rest. Sizes are still in game px (var(--s)), so controls scale with
+// the game, but positions are measured from the screen's own corners.
+import { VIEW_W } from './config.js';
 import { SPR, icon } from './sprites.js';
 import { $, el, pix } from './dom.js';
+import { storage } from './utils.js';
 
 const THROW = 28; // how far (game px) a knob travels from the stick's center at full tilt
-const HOME = { move: [66, 172], aim: [420, 205] }; // where each stick rests while no thumb is on it
+// where each stick rests while no thumb is on it, measured from the screen's left or right edge and
+// from the bottom. The move stick measures from the bottom of the game instead, so on screens taller
+// than 16:9 (tablets) it still rests above the health panel rather than on top of it.
+const HOME = { move: { left: 66, aboveGame: 98 }, aim: { right: 60, bottom: 65 } };
 
-// id, center x, center y, radius (game px). Sized for thumbs: ~40 CSS px or more on a phone.
+// id, distance of the center from the right edge, from the bottom edge, radius (game px).
+// Sized for thumbs: ~40 CSS px or more on a phone.
 const BUTTONS = [
-  ['dash', 345, 240, 19],
-  ['ability', 340, 190, 17],
-  ['reload', 372, 146, 14],
-  ['swap', 414, 134, 14],
-  ['flare', 456, 134, 14],
+  ['dash', 135, 30, 19],
+  ['ability', 140, 80, 17],
+  ['reload', 108, 124, 14],
+  ['swap', 66, 136, 14],
+  ['flare', 24, 136, 14],
 ];
 
 const px = (n) => `calc(var(--s) * ${n})`;
@@ -38,8 +47,9 @@ function capture(node, id) {
 }
 
 class Stick {
-  constructor(root, name) {
+  constructor(root, name, layer) {
     this.home = HOME[name];
+    this.layer = layer;
     this.base = el('div', `tstick ts-${name}`);
     this.knob = el('div', 'tknob');
     this.base.append(this.knob);
@@ -63,6 +73,7 @@ class Stick {
   drag(x, y) {
     let dx = x - this.cx, dy = y - this.cy;
     const d = Math.hypot(dx, dy);
+    // the base stays where the thumb landed; past the rim the knob just holds at full tilt
     if (d > THROW) {
       dx *= THROW / d;
       dy *= THROW / d;
@@ -75,7 +86,9 @@ class Stick {
   reset() {
     this.id = null;
     this.vx = this.vy = 0;
-    this.place(...this.home);
+    const [w, h] = this.layer.size();
+    const { left, right, bottom, aboveGame } = this.home;
+    this.place(left ?? w - right, aboveGame ? this.layer.gameBottom() - aboveGame : h - bottom);
     this.knob.style.transform = '';
     this.base.classList.remove('active');
   }
@@ -92,13 +105,20 @@ export class TouchControls {
     this.stage = $('stage');
     this.visible = false;
     this.cache = new Map();
-    this.move = new Stick(this.root, 'move');
-    this.aim = new Stick(this.root, 'aim');
+    // shoot the auto-aimed zombie while the right thumb is off the aim stick (TouchController)
+    this.autoFire = storage.get('ll_autofire', true);
+    this.move = new Stick(this.root, 'move', this);
+    this.aim = new Stick(this.root, 'aim', this);
+    // rotating the phone or the browser bars sliding away moves the resting spots
+    window.addEventListener('resize', () => {
+      if (this.move.id === null) this.move.reset();
+      if (this.aim.id === null) this.aim.reset();
+    });
 
     this.buttons = {};
     for (const [id, x, y, r] of BUTTONS) {
       const node = el('div', `tbtn tb-${id}`);
-      Object.assign(node.style, { left: px(x - r), top: px(y - r), width: px(r * 2), height: px(r * 2) });
+      Object.assign(node.style, { right: px(x - r), bottom: px(y - r), width: px(r * 2), height: px(r * 2) });
       const art = el('span', 'tart');
       const cd = el('i', 'tcd'); // cooldown wedge, drawn over the icon
       const secs = el('span', 'tsecs'); // seconds left on a long cooldown
@@ -136,7 +156,7 @@ export class TouchControls {
     this.root.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       const [x, y] = this.toGame(e);
-      const stick = x < VIEW_W / 2 ? this.move : this.aim;
+      const stick = x < this.size()[0] / 2 ? this.move : this.aim;
       if (stick.id !== null) return;
       capture(this.root, e.pointerId);
       stick.start(e.pointerId, x, y);
@@ -155,9 +175,29 @@ export class TouchControls {
     return this.move.id === id ? this.move : this.aim.id === id ? this.aim : null;
   }
 
+  // CSS px per game px: the same scale the game itself is drawn at
+  scale() {
+    return this.stage.getBoundingClientRect().width / VIEW_W;
+  }
+  // the screen's size in game px
+  size() {
+    const k = this.scale();
+    return [window.innerWidth / k, window.innerHeight / k];
+  }
+  // where the game's bottom edge is on the screen, in game px from the top
+  gameBottom() {
+    return this.stage.getBoundingClientRect().bottom / this.scale();
+  }
+  // a touch's position on the screen, in game px from the top-left corner
   toGame(e) {
-    const r = this.stage.getBoundingClientRect();
-    return [((e.clientX - r.left) / r.width) * VIEW_W, ((e.clientY - r.top) / r.height) * VIEW_H];
+    const k = this.scale();
+    return [e.clientX / k, e.clientY / k];
+  }
+
+  toggleAutoFire() {
+    this.autoFire = !this.autoFire;
+    storage.set('ll_autofire', this.autoFire);
+    return this.autoFire;
   }
 
   hit(id) {

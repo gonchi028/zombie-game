@@ -41,12 +41,6 @@
       <div id="hud-players"></div>
     </div>
 
-    <!-- phones and tablets: sticks and buttons, shown only while playing in touch mode (touch.js) -->
-    <div id="touch" class="hidden">
-      <div id="touch-pause" class="tbtn"><span class="tart">II</span></div>
-      <div id="touch-fs" class="tbtn fs-only" aria-label="Fullscreen"><svg class="fs-icon" viewBox="0 0 9 9" shape-rendering="crispEdges" aria-hidden="true"><path class="fs-enter" d="M0 0h3v1H1v2H0zM6 0h3v3H8V1H6zM0 6h1v2h2v1H0zM8 6h1v3H6V8h2z"/><path class="fs-exit" d="M2 0h1v3H0V2h2zM6 0h1v2h2v1H6zM0 6h3v3H2V7H0zM6 6h3v1H7v2H6z"/></svg></div>
-    </div>
-
     <div id="banner" class="hidden"><div id="banner-title"></div><div id="banner-sub"></div></div>
 
     <section id="scr-title" class="screen asleep">
@@ -113,6 +107,7 @@
         <button class="btn" data-action="mute">SOUND: ON</button>
         <button class="btn" data-action="music">MUSIC: ON</button>
         <button class="btn fs-only" data-action="fullscreen">FULLSCREEN: OFF</button>
+        <button class="btn touch-only" data-action="autofire">AUTO-FIRE: ON</button>
         <button class="btn" data-action="quit">QUIT TO TITLE</button>
       </div>
       <div class="owned" id="pause-owned"></div>
@@ -137,10 +132,20 @@
       </div>
     </section>
   </div>
+
+  <!-- phones and tablets: sticks and buttons, shown only while playing in touch mode (touch.js). It covers
+       the whole screen, not just the 16:9 game, so thumbs work out in the black bars of wide phones too. -->
+  <div id="touch" class="hidden">
+    <div id="touch-pause" class="tbtn"><span class="tart">II</span></div>
+    <div id="touch-fs" class="tbtn fs-only" aria-label="Fullscreen"><svg class="fs-icon" viewBox="0 0 9 9" shape-rendering="crispEdges" aria-hidden="true"><path class="fs-enter" d="M0 0h3v1H1v2H0zM6 0h3v3H8V1H6zM0 6h1v2h2v1H0zM8 6h1v3H6V8h2z"/><path class="fs-exit" d="M2 0h1v3H0V2h2zM6 0h1v2h2v1H6zM0 6h3v3H2V7H0zM6 6h3v1H7v2H6z"/></svg></div>
+  </div>
+
   <div id="rotate">
     <div class="rotate-phone"></div>
     <div class="rotate-title">ROTATE YOUR DEVICE</div>
     <div class="rotate-sub">LAST LIGHT PLAYS IN LANDSCAPE</div>
+    <!-- Android: going fullscreen also locks landscape, which turns the game for you -->
+    <div class="rotate-sub fs-only">OR TAP HERE TO PLAY FULLSCREEN</div>
   </div>
   <script type="module" src="js/main.js"></script>
 </body>

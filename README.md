@@ -63,8 +63,8 @@ no dependencies. Open it in a browser and play.
 - **Juicy animation.** Characters squash, stretch, lean and bob. Zombies flinch from hits and
   ragdoll across the street when they die.
 - **Solo or local co-op**, with revives. Keyboard + mouse, arrow keys with auto-aim, or gamepads.
-- **Plays on phones and tablets.** On-screen twin sticks with aim assist and thumb-sized buttons
-  appear as soon as you touch the screen. A fullscreen button sits on the title screen and next to
+- **Plays on phones and tablets.** On-screen twin sticks with aim assist, auto-fire and thumb-sized
+  buttons appear as soon as you touch the screen. A fullscreen button sits on the title screen and next to
   the pause button. On iPhones, which don't allow fullscreen web pages, it shows how to add the game
   to the Home Screen, where it opens fullscreen and in landscape like an app.
 - **A built-in How to Play guide** covering every survivor, weapon, zombie, wave type, pickup and
@@ -262,7 +262,7 @@ other three.
 | --- | --- | --- | --- | --- |
 | Move | `W` `A` `S` `D` | Arrows | Left stick | Drag on the left half |
 | Aim | Mouse | Auto-aim (nearest zombie) | Right stick | Drag on the right half |
-| Shoot | Left click | `Enter` | RT | Push the aim stick further |
+| Shoot | Left click | `Enter` | RT | Push the aim stick further, or auto-fire |
 | Ability | `Q` / right click | `/` | LT / LB | Ability button |
 | Dash | `Space` / `Left Shift` | `Right Shift` | A | Dash button |
 | Reload | `R` | `.` | X | Reload button |
@@ -275,9 +275,17 @@ other three.
 upgrade screen, press `1` `2` `3` to pick a card and `R` to reroll. Menus work
 with the mouse, the arrow keys, a gamepad's D-pad or a tap.
 
-The touch controls show up when you touch the screen, and go away when you move a mouse. The move
-and aim sticks appear wherever your thumbs land. The aim stick has a little aim assist: it locks on to
-a zombie within about 20° of where you point. In co-op on a tablet, player 2 uses a gamepad.
+The touch controls show up when you touch the screen, and go away when you move a mouse. They cover
+the whole screen, including the black bars at the sides of wide phones. The move and aim sticks
+appear wherever your thumbs land and stay there until you lift. The aim stick has a
+little aim assist: it locks on to a zombie within about 20° of where you point.
+
+With your thumb off the aim stick, you face the nearest zombie in sight and **auto-fire** at it once
+it's in range, so your right thumb is free for the buttons. Turn auto-fire off in the pause menu if
+you'd rather only shoot with the aim stick. Grenades, Molotovs and flares land on the zombie you're
+aiming at; Ivy's turret always lands next to her. In co-op on a tablet, player 2 uses a gamepad.
+
+On phones, the first "back" (such as Safari's edge swipe) pauses the run instead of leaving the page.
 
 For fullscreen, tap the corner button on the title screen or next to the pause button (on desktop,
 it's also in the pause menu). iPhones don't let web pages go fullscreen, so there the button explains

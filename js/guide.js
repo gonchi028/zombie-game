@@ -80,7 +80,8 @@ const CONTROLS = [
     rows: [
       [['LEFT SIDE'], 'drag to move'],
       [['RIGHT SIDE'], 'drag to aim, push further to shoot'],
-      ['Buttons by your right thumb: dash, ability, reload (TAKE when a gun is in reach), swap gun and road flare.'],
+      ['Thumb off the right side: you face the nearest zombie and shoot it (AUTO-FIRE, in the pause menu).'],
+      ['Buttons by your right thumb: dash, ability, reload (TAKE when a gun is in reach), swap gun and road flare. Throws land on your target.'],
       [['II'], 'pause'],
     ],
   },

@@ -35,6 +35,11 @@ function cardDesc(u) {
 const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const fmtTotal = (s) => (s >= 3600 ? `${Math.floor(s / 3600)}H ${Math.floor((s % 3600) / 60)}M` : fmtTime(s));
 
+// Screens that pop up mid-action: input is ignored for a moment, so a tap or click meant for the game
+// (reload, ability, firing) can't pick an upgrade card or press TRY AGAIN by accident.
+const ARMED_SCREENS = new Set(['scr-upgrade', 'scr-over']);
+const ARM_TIME = 600; // ms
+
 // Keys that never wake the splash, so browser shortcuts (reload, devtools, fullscreen) keep working.
 const SPLASH_IGNORE = ['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab'];
 
@@ -60,7 +65,8 @@ export class UI {
       if (b && document.activeElement !== b) b.focus({ preventScroll: true });
     });
     window.addEventListener('keydown', (e) => this.onKey(e));
-    $('scr-title').addEventListener('pointerdown', () => this.asleep && this.wake());
+    // `click`, not `pointerdown`: on touchscreens only the end of a tap may start audio or fullscreen
+    $('scr-title').addEventListener('click', () => this.asleep && this.wake());
     $('up-reroll').addEventListener('click', () => this.onReroll?.());
     $('guide-back').addEventListener('click', () => {
       this.h.click?.();
@@ -72,6 +78,7 @@ export class UI {
   showScreen(id) {
     for (const s of this.screens) s.classList.toggle('active', s.id === id);
     this.current = id;
+    if (ARMED_SCREENS.has(id)) this.arm($(id));
     if (id) {
       const first = $(id).querySelector('button.primary, .card, button');
       first?.focus({ preventScroll: true });
@@ -80,6 +87,16 @@ export class UI {
       document.activeElement?.blur?.();
     }
   }
+  arm(scr) {
+    this.lockedUntil = performance.now() + ARM_TIME;
+    scr.classList.add('arming'); // no pointer events (css)
+    clearTimeout(this.armTimer);
+    this.armTimer = setTimeout(() => scr.classList.remove('arming'), ARM_TIME);
+  }
+  get locked() {
+    return performance.now() < (this.lockedUntil || 0);
+  }
+
   get menuOpen() {
     return !!this.current;
   }
@@ -166,6 +183,10 @@ export class UI {
   refreshFullscreen(on) {
     document.body.classList.toggle('is-fullscreen', on);
     document.querySelectorAll('.btn[data-action="fullscreen"]:not(.icon)').forEach((b) => (b.textContent = `FULLSCREEN: ${on ? 'ON' : 'OFF'}`));
+  }
+
+  refreshAutoFire(on) {
+    document.querySelectorAll('[data-action="autofire"]').forEach((b) => (b.textContent = `AUTO-FIRE: ${on ? 'ON' : 'OFF'}`));
   }
 
   showFullscreenTip() {
@@ -580,6 +601,12 @@ export class UI {
 
   onKey(e) {
     if (!this.current) return;
+    if (this.locked) {
+      // Enter / Space would "click" the focused button natively, so swallow those too
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      return;
+    }
     if (this.asleep && this.current === 'scr-title') {
       if (e.metaKey || e.ctrlKey || e.altKey || /^F\d+$/.test(e.key) || SPLASH_IGNORE.includes(e.key)) return;
       // swallow the key: it shouldn't also toggle sound (M/N) or press the button that gets focus
@@ -612,7 +639,7 @@ export class UI {
   }
 
   pollGamepad(input, dt) {
-    if (!this.current || !input.pads.length) return;
+    if (!this.current || !input.pads.length || this.locked) return;
     if (this.asleep && this.current === 'scr-title') {
       if (input.pads.some((p, i) => p.buttons.some((_, b) => input.padHit(i, b)))) this.wake();
       return;
