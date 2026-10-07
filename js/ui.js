@@ -4,27 +4,8 @@ import { SPR, icon } from './sprites.js';
 import { UPGRADE_BY_ID, RARITY, CATEGORY } from './upgrades.js';
 import { PLAYER_COLORS } from './config.js';
 import { fmtInt } from './utils.js';
-
-const $ = (id) => document.getElementById(id);
-
-function el(tag, cls, text) {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  if (text != null) e.textContent = text;
-  return e;
-}
-
-// Copy a sprite canvas into the DOM, scaled in "game pixels" so it stays crisp at any window size.
-function pix(src, scale = 1, cls = '') {
-  const c = document.createElement('canvas');
-  c.width = src.width;
-  c.height = src.height;
-  c.getContext('2d').drawImage(src, 0, 0);
-  c.className = `px ${cls}`;
-  c.style.width = `calc(var(--s) * ${src.width * scale})`;
-  c.style.height = `calc(var(--s) * ${src.height * scale})`;
-  return c;
-}
+import { $, el, pix } from './dom.js';
+import { buildGuide } from './guide.js';
 
 function upgradeIcon(u, scale) {
   const [name, over] = u.icon;
@@ -70,6 +51,10 @@ export class UI {
     });
     window.addEventListener('keydown', (e) => this.onKey(e));
     $('up-reroll').addEventListener('click', () => this.onReroll?.());
+    $('guide-back').addEventListener('click', () => {
+      this.h.click?.();
+      this.closeGuide();
+    });
   }
 
   // ------------------------------------------------------------------ screens
@@ -101,8 +86,30 @@ export class UI {
     document.querySelectorAll('[data-action="mute"]').forEach((b) => (b.textContent = `SOUND: ${muted ? 'OFF' : 'ON'}`));
   }
 
-  showControls() {
-    this.showScreen('scr-controls');
+  // The guide opens from the title or the pause menu, and BACK returns to wherever it came from.
+  showGuide(from = 'title') {
+    this.guideFrom = from;
+    if (!this.guideTabs) {
+      this.guideTabs = buildGuide($('guide-tabs'), $('guide-body'), (id) => this.selectGuideTab(id));
+      this.selectGuideTab(this.guideTabs[0].id);
+    }
+    this.showScreen('scr-guide');
+    this.guideTabs.find((t) => t.id === this.guideTab).btn.focus({ preventScroll: true });
+  }
+
+  selectGuideTab(id) {
+    if (this.guideTab === id) return;
+    this.guideTab = id;
+    for (const t of this.guideTabs) {
+      t.btn.classList.toggle('active', t.id === id);
+      t.panel.classList.toggle('active', t.id === id);
+    }
+    $('guide-body').scrollTop = 0;
+  }
+
+  closeGuide() {
+    if (this.guideFrom === 'pause') this.showScreen('scr-pause');
+    else this.h.back();
   }
 
   showSelect(mode, onPick) {
@@ -469,7 +476,12 @@ export class UI {
       const cards = $(this.current).querySelectorAll('.card, .char-card');
       cards[n]?.click();
     } else if (code === 'Escape') {
-      if (this.current === 'scr-select' || this.current === 'scr-controls') this.h.back();
+      if (this.current === 'scr-select') this.h.back();
+      else if (this.current === 'scr-guide') {
+        // consume it, or the pause handler would see ESC on the pause menu and resume the game
+        e.stopImmediatePropagation();
+        this.closeGuide();
+      }
     } else if (code === 'KeyR' && this.current === 'scr-upgrade') {
       this.onReroll?.();
     }
@@ -490,7 +502,8 @@ export class UI {
       if (!dir && Math.abs(x) < 0.3 && Math.abs(y) < 0.3 && !input.padDown(i, 12) && !input.padDown(i, 13) && !input.padDown(i, 14) && !input.padDown(i, 15)) this.padNavCd = 0;
       if (input.padHit(i, 0)) document.activeElement?.click?.();
       if (input.padHit(i, 1)) {
-        if (this.current === 'scr-select' || this.current === 'scr-controls') this.h.back();
+        if (this.current === 'scr-select') this.h.back();
+        else if (this.current === 'scr-guide') this.closeGuide();
         else if (this.current === 'scr-pause') this.h.resume();
       }
       if (input.padHit(i, 3) && this.current === 'scr-upgrade') this.onReroll?.();

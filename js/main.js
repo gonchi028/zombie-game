@@ -43,7 +43,7 @@ const ui = new UI({
   click: () => sfx.play('select', 0.5),
   solo: () => ui.showSelect(1, startRun),
   coop: () => ui.showSelect(2, startRun),
-  controls: () => ui.showControls(),
+  guide: () => ui.showGuide(game.state === 'paused' ? 'pause' : 'title'),
   back: () => ui.showTitle(game.best, sfx.muted),
   resume,
   restart: () => {
@@ -69,6 +69,7 @@ window.addEventListener('keydown', unlock);
 
 window.addEventListener('keydown', (e) => {
   if (e.code === 'Escape' || e.code === 'KeyP') {
+    if (ui.current === 'scr-guide') return; // the guide handles its own ESC (back to pause)
     if (game.state === 'playing') pause();
     else if (game.state === 'paused') resume();
   } else if (e.code === 'KeyM') {
@@ -87,7 +88,7 @@ function frame(now) {
   last = Math.max(last, now);
   try {
     input.pollGamepads();
-    if (input.pads.some((_, i) => input.padHit(i, 9))) {
+    if (ui.current !== 'scr-guide' && input.pads.some((_, i) => input.padHit(i, 9))) {
       if (game.state === 'playing') pause();
       else if (game.state === 'paused') resume();
     }

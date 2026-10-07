@@ -18,39 +18,39 @@ export const WEAPONS = {
 
   // ---- pickups
   rifle: {
-    short: 'RIFLE', name: 'Assault Rifle', tier: 1, dmg: 13, rate: 9, mag: 30, reload: 1.5, spread: 0.07, speed: 460, pellets: 1,
+    short: 'RIFLE', name: 'Assault Rifle', desc: 'Steady full-auto all-rounder.', tier: 1, dmg: 13, rate: 9, mag: 30, reload: 1.5, spread: 0.07, speed: 460, pellets: 1,
     range: 320, knock: 50, reserve: 210, sound: 'rifle', shake: 1.4, flash: 1.2,
   },
   shotgun: {
-    short: 'SHOTGUN', name: 'Shotgun', tier: 1, dmg: 10, rate: 1.4, mag: 6, reload: 1.8, spread: 0.3, speed: 380, pellets: 7,
+    short: 'SHOTGUN', name: 'Shotgun', desc: 'Seven pellets. Wrecks anything close.', tier: 1, dmg: 10, rate: 1.4, mag: 6, reload: 1.8, spread: 0.3, speed: 380, pellets: 7,
     range: 150, knock: 110, reserve: 42, sound: 'shotgun', shake: 4, flash: 2, recoil: 70,
   },
   smg: {
-    short: 'SMG', name: 'SMG', tier: 1, dmg: 8, rate: 15, mag: 40, reload: 1.3, spread: 0.14, speed: 420, pellets: 1,
+    short: 'SMG', name: 'SMG', desc: 'Sprays fast. Light hits, huge volume.', tier: 1, dmg: 8, rate: 15, mag: 40, reload: 1.3, spread: 0.14, speed: 420, pellets: 1,
     range: 240, knock: 25, reserve: 280, sound: 'smg', shake: 1, flash: 0.9,
   },
   flamer: {
-    short: 'FLAMER', name: 'Flamethrower', tier: 2, dmg: 4, rate: 22, mag: 100, reload: 2.4, spread: 0.22, speed: 170, pellets: 1,
+    short: 'FLAMER', name: 'Flamethrower', desc: 'Burns through crowds and sets them ablaze.', tier: 2, dmg: 4, rate: 22, mag: 100, reload: 2.4, spread: 0.22, speed: 170, pellets: 1,
     range: 72, knock: 6, pierce: 99, reserve: 300, sound: 'flame', shake: 0.4, flash: 0, projectile: 'flame',
   },
   sniper: {
-    short: 'SNIPER', name: 'Sniper Rifle', tier: 2, dmg: 95, rate: 1, mag: 5, reload: 2, spread: 0.005, speed: 900, pellets: 1,
+    short: 'SNIPER', name: 'Sniper Rifle', desc: 'Every shot punches through a whole line.', tier: 2, dmg: 95, rate: 1, mag: 5, reload: 2, spread: 0.005, speed: 900, pellets: 1,
     range: 480, knock: 140, pierce: 6, reserve: 30, sound: 'sniper', shake: 4, flash: 2.2, projectile: 'sniper',
   },
   tesla: {
-    short: 'TESLA', name: 'Tesla Gun', tier: 2, dmg: 22, rate: 5, mag: 30, reload: 1.8, spread: 0, speed: 0, pellets: 1,
+    short: 'TESLA', name: 'Tesla Gun', desc: 'Lightning that jumps to 3 more zombies.', tier: 2, dmg: 22, rate: 5, mag: 30, reload: 1.8, spread: 0, speed: 0, pellets: 1,
     range: 150, knock: 30, reserve: 150, sound: 'zap', shake: 1, flash: 0, projectile: 'zap',
   },
   launcher: {
-    short: 'GRENADES', name: 'Grenade Launcher', tier: 3, dmg: 55, splashR: 38, rate: 1.6, mag: 6, reload: 2.3, spread: 0.04,
+    short: 'GRENADES', name: 'Grenade Launcher', desc: 'Lobbed shells that burst on impact.', tier: 3, dmg: 55, splashR: 38, rate: 1.6, mag: 6, reload: 2.3, spread: 0.04,
     speed: 0, pellets: 1, range: 170, knock: 0, reserve: 30, sound: 'thunk', shake: 2, flash: 1.5, projectile: 'nade',
   },
   rocket: {
-    short: 'ROCKETS', name: 'Rocket Launcher', tier: 3, dmg: 30, splash: 80, splashR: 44, rate: 1.1, mag: 4, reload: 2.2, spread: 0.02,
+    short: 'ROCKETS', name: 'Rocket Launcher', desc: 'Huge blast radius. Mind the slow reload.', tier: 3, dmg: 30, splash: 80, splashR: 44, rate: 1.1, mag: 4, reload: 2.2, spread: 0.02,
     speed: 250, pellets: 1, range: 380, knock: 0, reserve: 20, sound: 'rocket', shake: 3, flash: 2, projectile: 'rocket',
   },
   minigun: {
-    short: 'MINIGUN', name: 'Minigun', tier: 3, dmg: 9, rate: 24, mag: 200, reload: 3.2, spread: 0.16, speed: 460, pellets: 1,
+    short: 'MINIGUN', name: 'Minigun', desc: 'Spins up, then shreds. Slows you down.', tier: 3, dmg: 9, rate: 24, mag: 200, reload: 3.2, spread: 0.16, speed: 460, pellets: 1,
     range: 300, knock: 22, reserve: 600, sound: 'minigun', shake: 1.1, flash: 1, spinup: 0.55, slow: 0.55,
   },
 };
