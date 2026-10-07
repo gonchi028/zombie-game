@@ -1,5 +1,5 @@
-// Between waves every player picks one of three cards: powerups, trade-off modifiers or a new gun.
-import { WEAPONS } from './data.js';
+// Between waves every player picks one of three cards: powerups or trade-off modifiers.
+// (Guns aren't cards: they're found around the city, see the weapon drops in game.js.)
 import { weightedPick } from './utils.js';
 
 export const RARITY = {
@@ -7,18 +7,6 @@ export const RARITY = {
   rare: { label: 'RARE', weight: 30 },
   epic: { label: 'EPIC', weight: 9 },
 };
-
-const weaponCard = (id, rarity) => ({
-  id: `w_${id}`,
-  name: WEAPONS[id].name,
-  desc: `Swap your main gun for the ${WEAPONS[id].name}. Full ammo.`,
-  rarity,
-  max: 99,
-  weapon: id,
-  kind: 'weapon',
-  cond: (p) => p.weapons[1].id !== id,
-  apply: (p) => p.setPrimary(id),
-});
 
 export const UPGRADES = [
   // ---- common
@@ -59,13 +47,6 @@ export const UPGRADES = [
   { id: 'secondwind', name: 'Second Wind', desc: 'Cheat death once: get back up with 50% HP.', rarity: 'epic', max: 99, icon: ['heart', { r: '#ffd24a', w: '#fff6c8' }], cond: (p) => p.stats.secondWind === 0, apply: (p) => (p.stats.secondWind = 1) },
   { id: 'glass', name: 'Glass Cannon', desc: 'MODIFIER: +45% damage, but -30% max HP.', rarity: 'epic', max: 2, modifier: true, icon: ['diamond'], apply: (p) => { p.stats.dmgMul += 0.45; p.addMaxHp(-Math.round(p.maxHp * 0.3)); } },
   { id: 'berserk', name: 'Berserker', desc: 'MODIFIER: up to +60% damage & fire rate the lower your HP.', rarity: 'epic', max: 1, modifier: true, icon: ['skull', { w: '#ff6a5a' }], apply: (p) => (p.stats.berserk = 1) },
-
-  // ---- weapons
-  weaponCard('rifle', 'rare'),
-  weaponCard('shotgun', 'rare'),
-  weaponCard('smg', 'rare'),
-  weaponCard('rocket', 'epic'),
-  weaponCard('minigun', 'epic'),
 ];
 
 export const UPGRADE_BY_ID = Object.fromEntries(UPGRADES.map((u) => [u.id, u]));
@@ -77,10 +58,9 @@ export const CATEGORY = {
   mobility: { label: 'MOBILITY', ids: ['speed', 'dash'] },
   tech: { label: 'TECH', ids: ['saw', 'drone', 'tracker', 'deepscan', 'magnet', 'ability'] },
   ammo: { label: 'AMMO', ids: ['mag', 'reload', 'ammo'] },
-  weapon: { label: 'WEAPON', ids: [] },
 };
 for (const [cat, c] of Object.entries(CATEGORY)) for (const id of c.ids) UPGRADE_BY_ID[id].cat = cat;
-for (const u of UPGRADES) u.cat ??= u.weapon ? 'weapon' : 'offense';
+for (const u of UPGRADES) u.cat ??= 'offense';
 
 export function rollChoices(player, wave, count = 3) {
   const pool = UPGRADES.filter((u) => (player.upgrades[u.id] || 0) < u.max && (!u.cond || u.cond(player)));
@@ -88,7 +68,6 @@ export function rollChoices(player, wave, count = 3) {
     let w = RARITY[u.rarity].weight;
     if (u.rarity === 'epic') w += wave * 1.4;
     if (u.rarity === 'rare') w += wave * 0.8;
-    if (u.kind === 'weapon') w *= 0.55;
     if (u.id === 'medkit') w *= 1.5;
     return w;
   };

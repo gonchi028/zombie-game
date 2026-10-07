@@ -97,7 +97,7 @@ export class Input {
 // ------------------------------------------------------------------ controllers
 
 function emptyIntent() {
-  return { mx: 0, my: 0, aim: null, aimDist: 60, fire: false, reload: false, dash: false, ability: false, flare: false, swap: 0, pause: false, useCursor: false };
+  return { mx: 0, my: 0, aim: null, aimDist: 60, fire: false, reload: false, dash: false, ability: false, flare: false, interact: false, swap: 0, pause: false, useCursor: false };
 }
 
 const DEAD = 0.22;
@@ -129,6 +129,7 @@ export class KeyboardMouseController {
     o.dash = i.hit('Space') || i.hit('ShiftLeft');
     o.ability = i.hit('KeyQ') || i.mouse.rpressed;
     o.flare = i.hit('KeyG');
+    o.interact = i.hit('KeyF');
     o.swap = i.mouse.wheel !== 0 || i.hit('KeyE') ? 1 : i.hit('Digit1') ? -10 : i.hit('Digit2') ? -11 : 0;
     return o;
   }
@@ -153,6 +154,7 @@ export class ArrowsController {
     o.dash = i.hit('ShiftRight');
     o.ability = i.hit('Slash');
     o.flare = i.hit('Quote');
+    o.interact = i.hit('Semicolon');
     o.reload = i.hit('Period');
     o.swap = i.hit('Comma') ? 1 : 0;
     return o;
@@ -188,6 +190,7 @@ export class GamepadController {
     o.ability = i.padHit(n, 6) || i.padHit(n, 4);
     o.dash = i.padHit(n, 0) || i.padHit(n, 10);
     o.reload = i.padHit(n, 2);
+    o.interact = o.reload; // X picks up a gun when one is in reach, otherwise reloads
     o.flare = i.padHit(n, 1);
     o.swap = i.padHit(n, 3) ? 1 : 0;
     o.pause = i.padHit(n, 9);
@@ -209,7 +212,7 @@ export class HybridController {
     const a = this.primary.read(player, game);
     const b = this.pad.read(player, game);
     const padActive = b.mx || b.my || b.fire || b.dash || b.ability || b.flare || b.reload || b.swap;
-    const keyActive = a.mx || a.my || a.fire || a.dash || a.ability || a.flare || a.reload || a.swap || this.primary.input.mouse.pressed;
+    const keyActive = a.mx || a.my || a.fire || a.dash || a.ability || a.flare || a.interact || a.reload || a.swap || this.primary.input.mouse.pressed;
     if (padActive) this.usePad = true;
     else if (keyActive) this.usePad = false;
     const o = this.usePad ? b : a;

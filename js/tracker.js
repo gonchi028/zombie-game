@@ -79,6 +79,11 @@ export class MotionTracker {
         const dx = pk.x - c.x, dy = pk.y - c.y;
         if (dx * dx + dy * dy < range * range) g.fillRect(Math.round(CX + dx * k), Math.round(CY + dy * k), 1, 1);
       }
+      g.fillStyle = '#ffb84a';
+      for (const w of game.weaponDrops) {
+        const dx = w.x - c.x, dy = w.y - c.y;
+        if (dx * dx + dy * dy < range * range) g.fillRect(Math.round(CX + dx * k) - 1, Math.round(CY + dy * k), 3, 1);
+      }
     }
 
     // zombie blips: bright right after the sweep passes them, fading until the next pass

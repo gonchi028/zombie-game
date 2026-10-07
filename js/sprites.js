@@ -232,11 +232,23 @@ function zombiePal(skin, shirt, pants, extra = {}) {
 
 const GUN_PAL = {
   o: O, G: '#8a93a3', g: '#4a505c', k: '#25272d', w: '#6b4226', W: '#8e5b33', r: '#b8342f', y: '#d9b43a', e: '#556b2f',
+  b: '#4fb2ff', c: '#c8f0ff', f: '#ff8a2a',
 };
 export const GUN_ART = {
-  pistol: {
-    rows: ['oooooooo', 'oGGGGGGo', 'oggooooo', 'ogo.....', 'ooo.....'],
-    pivot: [2, 2],
+  carbine: {
+    rows: [
+      '....oo.......',
+      'ooooGGooooooo',
+      'owwggggggggGo',
+      'owoogoooooooo',
+      'oo.ogo.......',
+      '...ooo.......',
+    ],
+    pivot: [4, 3],
+  },
+  sawedoff: {
+    rows: ['oooooooooooo', 'oWwwgGGGGGGo', 'oWwwgggggggo', 'ooWwoooooooo', '.oooo.......'],
+    pivot: [4, 2],
   },
   rifle: {
     rows: [
@@ -255,6 +267,52 @@ export const GUN_ART = {
   smg: {
     rows: ['..oooooooo', 'ooGGGGGGGo', 'okggggggoo', 'oooggoo...', '...ggo....', '...ooo....'],
     pivot: [3, 3],
+  },
+  flamer: {
+    rows: [
+      '.oooooo........',
+      'orrrrrro.......',
+      'oyrrrrrooooooo.',
+      'orrrrrrogggGGfo',
+      'oooooooggooooo.',
+      '......ogo......',
+      '......ooo......',
+    ],
+    pivot: [7, 4],
+  },
+  sniper: {
+    rows: [
+      '.....oooooo........',
+      '.....okkkbo........',
+      'ooooooooggooooooooo',
+      'owwwwggggggggggggGo',
+      'owooowoooooooooooo.',
+      'oo..oo.............',
+    ],
+    pivot: [6, 4],
+  },
+  tesla: {
+    rows: [
+      '..ooooooo....',
+      '.ocbcbcbco...',
+      'oggggggggggoo',
+      'okkgggggggcbo',
+      'oooggoooooooo',
+      '..oggo.......',
+      '..oooo.......',
+    ],
+    pivot: [4, 4],
+  },
+  launcher: {
+    rows: [
+      '.oooooooooo..',
+      'oegggeeeeeeoo',
+      'oeeeeeeeeeego',
+      'oooogoooooooo',
+      '...ogo.......',
+      '...ooo.......',
+    ],
+    pivot: [5, 3],
   },
   rocket: {
     rows: [
@@ -348,6 +406,7 @@ const PICKUPS = {
 const GRENADE = { rows: ['.oo.', 'oeeo', 'oEeo', '.oo.'], pal: { o: O, e: '#5f7a34', E: '#8aa84a' } };
 const MOLOTOV = { rows: ['.f.', 'ow.', 'ogo', 'ogo', 'ooo'], pal: { o: O, f: '#ffb02a', w: '#d8c8a0', g: '#3d7a3a' } };
 const ROCKET = { rows: ['ooo...', 'oyeeeo', 'ooo...'], pal: { o: O, y: '#ff9a3a', e: '#6a7a3a' } };
+const SHELL = { rows: ['.oo.', 'oyeo', 'oeeo', '.oo.'], pal: { o: O, e: '#556b2f', y: '#d9b43a' } };
 const FLARE = { rows: ['ooooo.', 'orRrwy', 'ooooo.'], pal: { o: O, r: '#d8342a', R: '#8e1c18', w: '#fff0c8', y: '#ffd24a' } };
 const DRONE = {
   rows: ['go...og', '.ooooo.', 'ogbbbgo', '.ooooo.', 'go...og'],
@@ -424,6 +483,7 @@ export function buildAllSprites() {
   SPR.molotov = buildSprite(MOLOTOV.rows, MOLOTOV.pal);
   SPR.rocket = buildSprite(ROCKET.rows, ROCKET.pal);
   SPR.flare = buildSprite(FLARE.rows, FLARE.pal);
+  SPR.shell = buildSprite(SHELL.rows, SHELL.pal);
   SPR.drone = buildSprite(DRONE.rows, DRONE.pal);
   SPR.saw = buildSprite(SAW.rows, SAW.pal);
 }

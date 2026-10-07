@@ -257,7 +257,6 @@ kbd {
 .c-mobility { --cc: #4fd8ff; }
 .c-tech { --cc: #b98cff; }
 .c-ammo { --cc: #ffd24a; }
-.c-weapon { --cc: #ff9a3a; }
 
 .card-band {
   align-self: stretch;
@@ -367,13 +366,6 @@ kbd {
   background: repeating-linear-gradient(135deg, var(--cc) 0 0.9em, color-mix(in srgb, var(--cc) 70%, #000) 0.9em 1.8em);
 }
 .card.modifier .card-cat { background: var(--cc); padding: 0.3em 0.6em; }
-
-/* weapons: gunmetal plate */
-.card.c-weapon {
-  background:
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.025) 0 var(--px), transparent var(--px) calc(var(--px) * 4)),
-    linear-gradient(180deg, color-mix(in srgb, var(--cc) 18%, #15141a) 0%, #0d0c11 65%);
-}
 
 .up-foot { display: flex; gap: 1.2em; align-items: center; }
 
@@ -522,6 +514,8 @@ kbd {
 .slot.active .slot-label { color: var(--weapon); text-shadow: 0 0.2em 0 #000; }
 .slot.holster .slot-label { font-family: var(--body); font-size: 1.15em; color: #c9bda3; }
 .slot.dry { border-color: #6a2a26; }
+.slot.none { border-style: dashed; background: rgba(10, 9, 14, 0.45); opacity: 0.6; justify-content: center; }
+.slot.none .slot-label { font-family: var(--pixel); font-size: 0.32em; color: var(--muted); }
 .slot.dry .slot-label, .slot.holster.dry .slot-label { font-family: var(--pixel); font-size: 0.35em; color: #ff5a4e; }
 .slot.dry canvas { opacity: 0.35; filter: grayscale(1); }
 .slot.fresh::after {

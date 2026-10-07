@@ -27,7 +27,6 @@ function pix(src, scale = 1, cls = '') {
 }
 
 function upgradeIcon(u, scale) {
-  if (u.weapon) return pix(SPR.guns[u.weapon].img, Math.max(1, scale - 2), 'gun');
   const [name, over] = u.icon;
   return pix(icon(name, over), scale);
 }
@@ -134,7 +133,8 @@ export class UI {
       info.append(bars);
       const details = el('div', 'char-details');
       details.append(
-        el('div', 'kv', `WEAPON · ${WEAPONS[c.weapon].name}`),
+        el('div', 'kv', `SIGNATURE GUN · ${WEAPONS[c.weapon].name}`),
+        el('div', 'desc', WEAPONS[c.weapon].desc),
         el('div', 'kv', `ABILITY · ${c.abilityName}`),
         el('div', 'desc', c.abilityDesc),
         el('div', 'desc passive', c.passive),
@@ -178,7 +178,7 @@ export class UI {
       card.append(el('div', 'card-name', u.name));
       card.append(cardDesc(u));
       const foot = el('div', 'card-level');
-      if (u.weapon || u.max >= 99) foot.append(el('span', '', u.weapon ? 'NEW GUN' : 'INSTANT'));
+      if (u.max >= 99) foot.append(el('span', '', 'INSTANT'));
       else {
         if (u.max > 1) foot.append(pips('level-pips', u.max, lvl, lvl));
         foot.append(el('span', '', lvl ? `LV ${lvl} → ${lvl + 1}` : 'NEW'));
@@ -210,7 +210,7 @@ export class UI {
       row.append(el('span', 'owned-label', ids.length ? `${p.char.name} BUILD` : `${p.char.name} · NO UPGRADES YET`));
       for (const id of ids) {
         const u = UPGRADE_BY_ID[id];
-        if (!u || u.weapon) continue;
+        if (!u) continue;
         const chip = el('span', `chip c-${u.cat} r-${u.rarity}`);
         chip.title = `${u.name}: ${u.desc}`;
         chip.append(upgradeIcon(u, 2));
@@ -317,7 +317,7 @@ export class UI {
         const label = el('span', 'slot-label');
         node.append(el('span', 'slot-key', String(n + 1)), gun, label);
         rack.append(node);
-        return { node, gun, label, gunKey: null };
+        return { node, gun, label, gunKey: '' };
       });
       panel.append(portrait, main, rack);
       wrap.append(panel);
@@ -416,6 +416,16 @@ export class UI {
     const pop = performance.now() < (P.popUntil || 0);
     p.weapons.forEach((w, n) => {
       const S = P.slots[n];
+      if (!w) {
+        // nothing picked up yet
+        if (S.gunKey !== null) {
+          S.gunKey = null;
+          S.gun.innerHTML = '';
+        }
+        this.set(k(`sl${n}`), S.label, 'text', 'NO GUN');
+        this.set(k(`sc${n}`), S.node, 'class', 'slot holster none');
+        return;
+      }
       const active = n === p.slot;
       if (S.gunKey !== `${w.id}:${active}`) {
         S.gunKey = `${w.id}:${active}`;

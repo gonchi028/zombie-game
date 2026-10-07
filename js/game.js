@@ -1,5 +1,6 @@
 // World simulation + rendering. main.js drives it; ui.js shows menus/HUD around it.
-import { VIEW_W, VIEW_H, AMBIENT_DARK, PLAYER_COLORS } from './config.js';
+import { VIEW_W, VIEW_H, AMBIENT_DARK, PLAYER_COLORS, TILE } from './config.js';
+import { WEAPONS, PICKUP_WEAPONS } from './data.js';
 import { CityMap } from './map.js';
 import { Lighting, buildCone } from './lighting.js';
 import { Decals, Particles } from './particles.js';
@@ -10,12 +11,18 @@ import { rollChoices } from './upgrades.js';
 import { SPR } from './sprites.js';
 import { drawText } from './font.js';
 import { MotionTracker } from './tracker.js';
-import { clamp, dist, dist2, rand, chance, choice, TAU, pixCircle, pixEllipse, storage } from './utils.js';
+import { clamp, dist, dist2, rand, chance, choice, TAU, pixCircle, pixEllipse, storage, weightedPick } from './utils.js';
 
 const G = 420; // gravity for thrown things
 // Road flare: a held item that pulls nearby zombies off the players, then pops.
 const FLARE_TIME = 6.5; // seconds it burns (including the throw)
 const LURE_R = 170; // zombies this close (with line of sight) chase the flare instead
+// Weapon drops: guns that appear around the city over time.
+const DROP_EVERY = [18, 30]; // seconds between drops (random in range)
+const FIRST_DROP = 7; // the first one comes early so players learn about it
+const MAX_DROPS = 2; // fresh drops on the map at once (guns players drop don't count)
+const DROP_LIFE = 45;
+const DROP_REACH = 11;
 const ACID = ['#3f6a14', '#5a8a1a', '#2e4a10', '#6f9a24'];
 const WAVE_FLAVOR = [
   'THEY SMELL YOU', 'STAY IN THE LIGHT', 'NO ONE IS COMING', 'KEEP MOVING', 'AIM FOR THE HEAD',
@@ -76,6 +83,8 @@ export class Game {
     this.bullets = [];
     this.enemyShots = [];
     this.throwables = [];
+    this.weaponDrops = [];
+    this.dropT = FIRST_DROP;
     this.pools = [];
     this.pickups = [];
     this.flashes = [];
@@ -316,6 +325,139 @@ export class Game {
     this.sound('flare', p.x, p.y);
   }
 
+  // ------------------------------------------------------------------ weapon drops
+  // Stronger guns get likelier as the waves go on.
+  pickDropWeapon() {
+    const wave = Math.max(1, this.waves.wave);
+    const weight = (id) => {
+      const tier = WEAPONS[id].tier;
+      if (tier === 1) return 3;
+      if (tier === 2) return wave >= 3 ? 1 + wave * 0.2 : 0.3;
+      return wave >= 5 ? 0.4 + wave * 0.15 : 0;
+    };
+    return weightedPick(PICKUP_WEAPONS, weight);
+  }
+
+  // Somewhere walkable, a short walk (5-14 tiles) from the nearest player.
+  dropSpot() {
+    const { map } = this;
+    for (let tries = 0; tries < 80; tries++) {
+      const i = map.walkable[Math.floor(Math.random() * map.walkable.length)];
+      const d = map.dist[i];
+      if (!(d >= 5 && d <= 14)) continue;
+      const x = (i % map.w) * TILE + 8, y = Math.floor(i / map.w) * TILE + 8;
+      if (this.weaponDrops.some((w) => dist2(w.x, w.y, x, y) < 48 * 48)) continue;
+      return { x, y };
+    }
+    return null;
+  }
+
+  spawnWeaponDrop(id, x, y, ammo = null, life = DROP_LIFE) {
+    const drop = { id, x, y, ammo, t: 0, life, fresh: !ammo };
+    this.weaponDrops.push(drop);
+    return drop;
+  }
+
+  updateWeaponDrops(dt) {
+    if (this.state === 'playing' && this.waves.state === 'fight') {
+      this.dropT -= dt;
+      const fresh = this.weaponDrops.filter((w) => w.fresh).length;
+      if (this.dropT <= 0 && fresh < MAX_DROPS) {
+        this.dropT = rand(...DROP_EVERY);
+        const at = this.dropSpot();
+        if (at) {
+          this.spawnWeaponDrop(this.pickDropWeapon(), at.x, at.y);
+          this.particles.ring(at.x, at.y, 26, '#ffb84a', 0.5);
+          this.addFlash(at.x, at.y, 60, 0.4, '#ffb84a');
+          this.sfx.play('wdrop', 0.6);
+        }
+      }
+    }
+    for (const p of this.players) p.nearDrop = null;
+    for (const w of this.weaponDrops) {
+      w.t += dt;
+      if (w.t >= w.life) w.dead = true;
+      if (w.dead) continue;
+      for (const p of this.players) {
+        if (!p.alive || dist2(p.x, p.y, w.x, w.y) > DROP_REACH * DROP_REACH) continue;
+        const cur = p.weapons[1];
+        // empty slot or the same gun: just grab it. A different gun waits for a button press.
+        if (!cur || cur.id === w.id) this.takeDrop(p, w);
+        else if (!p.nearDrop || dist2(p.x, p.y, w.x, w.y) < dist2(p.x, p.y, p.nearDrop.x, p.nearDrop.y)) p.nearDrop = w;
+        if (w.dead) break;
+      }
+    }
+    this.weaponDrops = this.weaponDrops.filter((w) => !w.dead);
+  }
+
+  takeDrop(p, w) {
+    if (w.dead) return;
+    w.dead = true;
+    const old = p.takeWeapon(w.id, w.ammo);
+    // leave the gun you swapped out on the ground (unless it's empty) so you can change your mind
+    if (old && old.ammo + old.reserve > 0) {
+      this.spawnWeaponDrop(old.id, p.x + rand(-4, 4), p.y + 6, { ammo: old.ammo, reserve: old.reserve }, 25);
+    }
+    p.nearDrop = null;
+    this.sound('equip', p.x, p.y);
+  }
+
+  // ------------------------------------------------------------------ special guns
+  // Tesla gun: arcs to the nearest zombie in front of the muzzle, then jumps to up to 3 more.
+  teslaShot(owner, x, y, a, dmg, range) {
+    let best = null, bd = range * range;
+    for (const z of this.zombiesNear(x, y, range)) {
+      if (z.dead) continue;
+      const dx = z.x - x, dy = z.y - z.bodyOff - y;
+      const d = dx * dx + dy * dy;
+      if (d >= bd) continue;
+      let da = Math.atan2(dy, dx) - a;
+      da = Math.atan2(Math.sin(da), Math.cos(da));
+      if (Math.abs(da) > 0.6 || !this.map.los(x, y, z.x, z.y - z.bodyOff)) continue;
+      bd = d;
+      best = z;
+    }
+    const pts = [{ x, y }];
+    if (!best) {
+      // nothing to hit: a short crackle in the air
+      pts.push({ x: x + Math.cos(a) * 30 + rand(-5, 5), y: y + Math.sin(a) * 30 + rand(-5, 5) });
+      this.bolts.push({ pts, t: 0.08 });
+      return;
+    }
+    const hit = new Set();
+    let cur = best;
+    for (let i = 0; i < 4 && cur; i++) {
+      hit.add(cur.id);
+      pts.push({ x: cur.x + rand(-1, 1), y: cur.y - cur.bodyOff + rand(-1, 1) });
+      const from = pts[pts.length - 2];
+      const dx = cur.x - from.x, dy = cur.y - from.y, dd = Math.hypot(dx, dy) || 1;
+      this.damageZombie(cur, dmg * (i ? 0.7 : 1), { owner, ax: dx / dd, ay: dy / dd, knock: 30, noProc: i > 0 });
+      let next = null, nd = 60 * 60;
+      for (const o of this.zombiesNear(cur.x, cur.y, 60)) {
+        if (o.dead || hit.has(o.id)) continue;
+        const d = dist2(cur.x, cur.y, o.x, o.y);
+        if (d < nd) {
+          nd = d;
+          next = o;
+        }
+      }
+      cur = next;
+    }
+    this.bolts.push({ pts, t: 0.12 });
+    this.addFlash(best.x, best.y, 40, 0.1, '#7fd8ff');
+  }
+
+  // Grenade launcher: a lobbed shell that bounces, and blows up on a zombie or when its fuse runs out.
+  launchGrenade(owner, x, y, a, def) {
+    const range = clamp(owner.aimDist || 100, 40, def.range);
+    const T = 0.45, z0 = 6;
+    const vx = (Math.cos(a) * range) / T, vy = (Math.sin(a) * range) / T;
+    this.throwables.push({
+      kind: 'shell', x, y: y + 3, z: z0, vx, vy, vz: (0.5 * G * T * T - z0) / T, fuse: 0.9, owner, spin: 0, dead: false,
+      boomR: def.splashR, boomDmg: def.dmg * owner.dmgMul(),
+    });
+  }
+
   // The flare a zombie should chase instead of a player, if any. The boss can't be fooled.
   lureFor(z) {
     if (z.type === 'boss') return null;
@@ -446,7 +588,8 @@ export class Game {
     }
     const r = Math.random();
     let acc = 0;
-    for (const [type, p] of [['ammo', 0.08], ['health', 0.03], ['rage', 0.006], ['maxammo', 0.005]]) {
+    const ammo = this.players.some((p) => p.weapons[1]) ? 0.08 : 0;
+    for (const [type, p] of [['ammo', ammo], ['health', 0.03], ['rage', 0.006], ['maxammo', 0.005]]) {
       acc += p * m;
       if (r < acc) {
         this.spawnPickup(type, z.x, z.y);
@@ -602,6 +745,7 @@ export class Game {
     this.updateThrowables(dt);
     this.updatePools(dt);
     this.updatePickups(dt);
+    this.updateWeaponDrops(dt);
     this.updateFires(dt);
     this.particles.update(dt);
     this.updateFlashes(dt);
@@ -724,6 +868,10 @@ export class Game {
       for (let s = 0; s < steps && !b.dead; s++) {
         const nx = b.x + (b.vx * dt) / steps, ny = b.y + (b.vy * dt) / steps;
         if (map.bulletBlocked(nx, ny)) {
+          if (b.kind === 'flame') {
+            b.dead = true;
+            break;
+          }
           if (b.kind === 'rocket') {
             this.rocketBoom(b);
             break;
@@ -759,6 +907,14 @@ export class Game {
         this.particles.smoke(b.x, b.y, 1);
         this.particles.fire(b.x, b.y, 1, 5);
       }
+      if (b.kind === 'flame' && !b.dead) {
+        // flames slow down and spread out as they burn
+        const k = Math.exp(-1.5 * dt);
+        b.vx *= k;
+        b.vy *= k;
+        if (Math.random() < dt * 12) this.particles.fire(b.x, b.y, 2, 14);
+        if (b.vx * b.vx + b.vy * b.vy < 25 * 25) b.dead = true;
+      }
       b.traveled += total;
       if (!b.dead && b.traveled > b.range) {
         if (b.kind === 'rocket') this.rocketBoom(b);
@@ -780,6 +936,7 @@ export class Game {
       this.rocketBoom(b);
       return;
     }
+    if (b.kind === 'flame') this.ignite(z, 2.5, 16 * (b.owner ? b.owner.dmgMul() : 1), b.owner);
     let dmg = b.dmg;
     let crit = false;
     if (b.owner && !b.noProc && chance(b.owner.stats.crit)) {
@@ -790,7 +947,7 @@ export class Game {
     this.damageZombie(z, dmg, { owner: b.owner, ax: b.vx / sp, ay: b.vy / sp, knock: b.knock, crit, noProc: b.noProc });
     if (b.pierce > 0) {
       b.pierce--;
-      b.dmg *= 0.8;
+      if (b.kind !== 'flame') b.dmg *= 0.8;
     } else b.dead = true;
   }
 
@@ -850,11 +1007,19 @@ export class Game {
           t.vy *= 0.55;
         }
         if (t.kind === 'flare') this.updateFlare(t, dt);
+        if (t.kind === 'shell') {
+          // detonates on any zombie it touches, at any point of the arc below the top of its head
+          for (const z of this.zombiesNear(t.x, t.y, 16)) {
+            if (!z.dead && t.z < z.bodyOff * 2 + 6 && dist2(t.x, t.y, z.x, z.y) < (z.r + 3) ** 2) t.fuse = 0;
+          }
+        }
         if (t.fuse <= 0) {
           t.dead = true;
           if (t.kind === 'flare') {
             t.alive = false;
             this.explode(t.x, t.y, 46, 90 * t.owner.dmgMul(), t.owner, {});
+          } else if (t.kind === 'shell') {
+            this.explode(t.x, t.y, t.boomR, t.boomDmg, t.owner, { small: true });
           } else {
             const st = t.owner.stats;
             this.explode(t.x, t.y, 54 * st.abilityRadius, 120 * t.owner.dmgMul(), t.owner, {});
@@ -1041,6 +1206,7 @@ export class Game {
     g.drawImage(this.decals.canvas, cx, cy, VIEW_W, VIEW_H, 0, 0, VIEW_W, VIEW_H);
     this.drawPools(g, cx, cy);
     this.drawPickups(g, cx, cy);
+    this.drawWeaponDrops(g, cx, cy);
 
     // shadows + co-op rings
     for (const z of this.zombies) pixEllipse(g, z.x - cx, z.y - cy + 2, z.r + 1, Math.max(2, z.r >> 1), 'rgba(0,0,0,0.35)');
@@ -1106,6 +1272,23 @@ export class Game {
     }
   }
 
+  drawWeaponDrops(g, cx, cy) {
+    for (const w of this.weaponDrops) {
+      // blink when about to vanish
+      if (w.life - w.t < 5 && Math.floor(w.t * 8) % 2 === 0) continue;
+      const img = SPR.guns[w.id].img;
+      const x = Math.round(w.x - cx), y = Math.round(w.y - cy);
+      const bob = Math.round(Math.sin(w.t * 3.5 + w.x) * 1.5);
+      pixEllipse(g, x, y + 3, Math.ceil(img.width / 2) + 1, 2, 'rgba(0,0,0,0.45)');
+      if (w.fresh) {
+        g.globalAlpha = 0.35 + 0.25 * Math.sin(w.t * 5);
+        pixEllipse(g, x, y + 3, Math.ceil(img.width / 2) + 3, 3, '#ffb84a');
+        g.globalAlpha = 1;
+      }
+      g.drawImage(img, x - (img.width >> 1), y - img.height - 1 + bob);
+    }
+  }
+
   drawCompanions(g, cx, cy) {
     for (const p of this.players) {
       if (!p.alive) continue;
@@ -1130,7 +1313,7 @@ export class Game {
   drawThrowables(g, cx, cy) {
     for (const t of this.throwables) {
       pixEllipse(g, t.x - cx, t.y - cy + 1, 2, 1, 'rgba(0,0,0,0.4)');
-      const img = t.kind === 'molotov' ? SPR.molotov : t.kind === 'flare' ? SPR.flare : SPR.grenade;
+      const img = t.kind === 'molotov' ? SPR.molotov : t.kind === 'flare' ? SPR.flare : t.kind === 'shell' ? SPR.shell : SPR.grenade;
       g.save();
       g.translate(Math.round(t.x - cx), Math.round(t.y - t.z - cy));
       g.rotate(Math.floor(t.spin) * 0.8);
@@ -1160,6 +1343,21 @@ export class Game {
         g.rotate(Math.atan2(uy, ux));
         g.drawImage(SPR.rocket, -3, -1);
         g.restore();
+        continue;
+      }
+      if (b.kind === 'flame') {
+        // a ball of fire that grows and cools from white to dark red
+        const k = Math.min(1, b.traveled / b.range);
+        g.globalAlpha = 0.9 - k * 0.5;
+        pixCircle(g, x, y, Math.round(1 + k * 3), k < 0.25 ? '#fff3b0' : k < 0.55 ? '#ffb02a' : k < 0.8 ? '#ff5a1a' : '#a8200a');
+        g.globalAlpha = 1;
+        continue;
+      }
+      if (b.kind === 'sniper') {
+        g.fillStyle = 'rgba(255,255,255,0.35)';
+        for (let i = 2; i <= 16; i++) g.fillRect(Math.round(x - ux * i), Math.round(y - uy * i), 1, 1);
+        g.fillStyle = '#ffffff';
+        for (let i = 0; i <= 3; i++) g.fillRect(Math.round(x - ux * i), Math.round(y - uy * i), 1, 1);
         continue;
       }
       const drone = b.kind === 'drone';
@@ -1263,6 +1461,21 @@ export class Game {
         glows.push({ x, y, r: 56 * fl, color: '#ff3a2a', alpha: 0.5 * fl });
       }
     }
+    for (const w of this.weaponDrops) {
+      const x = w.x - cx, y = w.y - cy;
+      if (!inView(x, y)) continue;
+      lights.push({ x, y, r: 26, intensity: 0.7 });
+      glows.push({ x, y: y - 3, r: 16, color: '#ffb84a', alpha: 0.3 + 0.1 * Math.sin(t * 5 + w.x) });
+    }
+    for (const p of this.players) {
+      if (p.alive && p.firing && p.weapon.def.projectile === 'flame' && p.weapon.ammo > 0) {
+        const m = p.muzzle();
+        const x = m.x - cx + Math.cos(p.aim) * 24, y = m.y - cy + Math.sin(p.aim) * 24;
+        const fl = 0.85 + rand(-0.1, 0.1);
+        lights.push({ x, y, r: 70 * fl, intensity: 0.85 });
+        glows.push({ x, y, r: 36 * fl, color: '#ff7a2a', alpha: 0.35 });
+      }
+    }
     for (const pk of this.pickups) {
       const x = pk.x - cx, y = pk.y - cy;
       const col = pk.type === 'health' ? '#ff6a6a' : pk.type === 'rage' || pk.type === 'flare' ? '#ff2a2a' : '#ffd24a';
@@ -1304,6 +1517,28 @@ export class Game {
       if (w.def.spinup && w.spin > 0 && w.spin < 1) {
         g.fillStyle = '#ffb84a';
         g.fillRect(x - 8, y - 18, Math.round(16 * w.spin), 1);
+      }
+    }
+    // weapon drops: name when someone's close, swap prompt when it needs a button press
+    for (const w of this.weaponDrops) {
+      const x = Math.round(w.x - cx), y = Math.round(w.y - cy);
+      const near = this.players.find((p) => p.nearDrop === w);
+      if (near) {
+        const label = near.ctrl.label || '';
+        const key = label === 'GAMEPAD' ? 'X' : label.startsWith('ARROWS') ? ';' : 'F';
+        drawText(g, `${key}: ${WEAPONS[w.id].short}`, x, y - 20, '#ffd24a', 'center');
+      } else if (this.players.some((p) => p.alive && dist2(p.x, p.y, w.x, w.y) < 60 * 60)) {
+        drawText(g, WEAPONS[w.id].short, x, y - 20, '#ffb84a', 'center');
+      }
+      // fresh drops off screen get an orange arrow at the edge
+      if (!w.fresh || (x > -4 && x < VIEW_W + 4 && y > -4 && y < VIEW_H + 4)) continue;
+      const ax = clamp(x, 8, VIEW_W - 8), ay = clamp(y, 8, VIEW_H - 8);
+      const a = Math.atan2(y - ay, x - ax);
+      g.fillStyle = '#ffb84a';
+      for (let i = 0; i < 4; i++) {
+        const w2 = 3 - i;
+        const px = Math.round(ax + Math.cos(a) * i), py = Math.round(ay + Math.sin(a) * i);
+        g.fillRect(px - (w2 >> 1), py - (w2 >> 1), Math.max(1, w2), Math.max(1, w2));
       }
     }
     // off-screen threat arrows: the boss always, stragglers at the end of a wave

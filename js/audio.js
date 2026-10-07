@@ -3,7 +3,7 @@ import { storage } from './utils.js';
 
 const MIN_GAP = {
   pistol: 0.03, rifle: 0.03, smg: 0.025, shotgun: 0.05, minigun: 0.02, hit: 0.03, zdie: 0.04,
-  groan: 0.35, fizz: 0.1, explosion: 0.06, pickup: 0.05, hurt: 0.15, bark: 0.3, zap: 0.05, empty: 0.15,
+  groan: 0.35, fizz: 0.1, flame: 0.09, equip: 0.1, explosion: 0.06, pickup: 0.05, hurt: 0.15, bark: 0.3, zap: 0.05, empty: 0.15,
 };
 
 export class Sfx {
@@ -224,6 +224,25 @@ export class Sfx {
         break;
       case 'fizz':
         this._noise(t, 0.35, 0.12, 'bandpass', 3800 + r() * 1200, 1.2);
+        break;
+      case 'flame':
+        this._noise(t, 0.16, 0.22, 'lowpass', 900, 0.8, 400);
+        break;
+      case 'sniper':
+        this._noise(t, 0.25, 0.9, 'bandpass', 1400, 0.6);
+        this._tone(t, 0.3, 0.5, 'square', 110, 35);
+        this._noise(t + 0.05, 0.6, 0.2, 'lowpass', 500);
+        break;
+      case 'thunk':
+        this._tone(t, 0.12, 0.45, 'sine', 160, 60);
+        this._noise(t, 0.08, 0.3, 'lowpass', 700);
+        break;
+      case 'wdrop':
+        [330, 440, 554].forEach((f, i) => this._tone(t + i * 0.07, 0.16, 0.14, 'square', f));
+        break;
+      case 'equip':
+        this._noise(t, 0.05, 0.4, 'highpass', 2500);
+        this._tone(t + 0.06, 0.08, 0.2, 'square', 520, 780);
         break;
       case 'ping':
         this._tone(t, 0.25, 0.12, 'sine', 1180, 1150);

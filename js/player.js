@@ -57,8 +57,10 @@ export class Player {
     Object.assign(this.stats, c.stats);
     this.maxHp = c.hp;
     this.hp = c.hp;
-    this.weapons = [new WeaponState('pistol', this), new WeaponState(c.weapon, this)];
-    this.slot = 1;
+    // slot 0: the character's signature gun (never runs dry); slot 1: whatever you picked up
+    this.weapons = [new WeaponState(c.weapon, this), null];
+    this.slot = 0;
+    this.nearDrop = null; // weapon drop in reach that needs a button press to swap for
     this.aim = 0;
     this.aimDist = 60;
     this.facing = 1;
@@ -121,22 +123,50 @@ export class Player {
     if (this.state !== 'alive') return;
     this.hp = Math.min(this.maxHp, this.hp + n);
   }
-  setPrimary(id) {
-    this.weapons[1] = new WeaponState(id, this);
+  // Pick up a gun. The same gun as your slot-2 one just adds its ammo; a different one replaces it
+  // and is returned so it can be dropped on the ground. `ammo` carries a dropped gun's leftovers.
+  takeWeapon(id, ammo) {
+    const cur = this.weapons[1];
+    if (cur && cur.id === id) {
+      const add = ammo ? ammo.ammo + ammo.reserve : cur.magSize() + Math.ceil(cur.maxReserve() * 0.5);
+      cur.reserve = Math.min(cur.maxReserve(), cur.reserve + add);
+      this.popup(`+${cur.def.short} AMMO`, '#ffd24a');
+      return null;
+    }
+    const w = new WeaponState(id, this);
+    if (ammo) {
+      w.ammo = Math.min(w.magSize(), ammo.ammo);
+      w.reserve = Math.min(w.maxReserve(), ammo.reserve);
+    }
+    this.weapons[1] = w;
+    if (this.slot === 1) this.weapon.reloadT = 0;
     this.slot = 1;
+    this.swapT = 0.22;
     this.newGunT = 2.5;
+    this.popup(w.def.short);
+    return cur;
+  }
+
+  // Weapon text over your head; a new one replaces the last instead of stacking on top of it.
+  popup(str, color = '#ffb84a', life = 0.8) {
+    if (this.swapText) this.swapText.t = this.swapText.life;
+    this.swapText = this.game.particles.text(this.x, this.y - 22, str, color, life);
+  }
+  guns() {
+    return this.weapons.filter(Boolean);
   }
   refillAmmo() {
-    for (const w of this.weapons) {
+    for (const w of this.guns()) {
       w.reserve = w.maxReserve();
       w.ammo = w.magSize();
     }
   }
   refillMags() {
-    for (const w of this.weapons) w.ammo = Math.max(w.ammo, w.magSize());
+    for (const w of this.guns()) w.ammo = Math.max(w.ammo, w.magSize());
   }
   addAmmo(fraction) {
     const w = this.weapons[1];
+    if (!w) return;
     w.reserve = Math.min(w.maxReserve(), w.reserve + Math.ceil(w.maxReserve() * fraction));
   }
   addDrone() {
@@ -233,6 +263,11 @@ export class Player {
     if (o.swap === 1) this.switchWeapon(1 - this.slot);
     else if (o.swap === -10) this.switchWeapon(0);
     else if (o.swap === -11) this.switchWeapon(1);
+    // pick up / swap for the weapon at your feet (gamepad X doubles as reload when there's none)
+    if (o.interact && this.nearDrop) {
+      game.takeDrop(this, this.nearDrop);
+      o.reload = false;
+    }
     if (o.reload) this.startReload();
     this.updateWeapon(dt, o.fire);
 
@@ -254,15 +289,13 @@ export class Player {
   }
 
   switchWeapon(slot, note, color = '#ffb84a') {
-    if (slot === this.slot) return;
+    if (slot === this.slot || !this.weapons[slot]) return;
     this.weapon.reloadT = 0;
     this.slot = slot;
     this.swapT = SWAP_TIME;
     this.weapon.cd = Math.max(this.weapon.cd, 0.15);
     this.game.sound('reload', this.x, this.y, 0.5);
-    // name of the gun over your head; quick swaps replace the previous popup instead of stacking
-    if (this.swapText) this.swapText.t = this.swapText.life;
-    this.swapText = this.game.particles.text(this.x, this.y - 22, note || this.weapon.def.short, note ? color : '#ffb84a', 0.7);
+    this.popup(note || this.weapon.def.short, note ? color : '#ffb84a', 0.7);
   }
 
   startReload() {
@@ -328,20 +361,27 @@ export class Player {
     const mz = this.muzzle();
     const n = def.pellets + st.multishot * (def.pellets > 1 ? 3 : 1);
     const spread = def.spread * st.spreadMul;
+    const kind = def.projectile || 'bullet';
     for (let i = 0; i < n; i++) {
       let a = this.aim;
       if (def.pellets > 1) a += (Math.random() - 0.5) * spread * 2;
       else a += (i - (n - 1) / 2) * 0.09 + (Math.random() - 0.5) * spread;
-      game.addBullet({
-        x: mz.x, y: mz.y, a, speed: def.speed * rand(0.92, 1.08), dmg: def.dmg * this.dmgMul(), range: def.range * rand(0.9, 1.1),
-        pierce: st.pierce, ricochet: st.ricochet, knock: def.knock * st.knockMul, owner: this,
-        kind: def.projectile || 'bullet', splash: (def.splash || 0) * this.dmgMul(), splashR: def.splashR,
-      });
+      if (kind === 'zap') game.teslaShot(this, mz.x, mz.y, a, def.dmg * this.dmgMul(), def.range);
+      else if (kind === 'nade') game.launchGrenade(this, mz.x, mz.y, a, def);
+      else {
+        game.addBullet({
+          x: mz.x, y: mz.y, a, speed: def.speed * rand(0.92, 1.08), dmg: def.dmg * this.dmgMul(), range: def.range * rand(0.9, 1.1),
+          pierce: st.pierce + (def.pierce || 0), ricochet: kind === 'flame' ? 0 : st.ricochet, knock: def.knock * st.knockMul, owner: this,
+          kind, splash: (def.splash || 0) * this.dmgMul(), splashR: def.splashR,
+        });
+      }
     }
-    game.particles.muzzle(mz.x, mz.y, this.aim, def.flash);
-    game.addFlash(mz.x, mz.y, 50 + def.flash * 10, 0.06, '#ffc86a');
-    if (!def.projectile) game.particles.casing(this.x, this.y - 3, this.aim);
-    else game.particles.smoke(mz.x, mz.y, 2);
+    if (def.flash) {
+      game.particles.muzzle(mz.x, mz.y, this.aim, def.flash);
+      game.addFlash(mz.x, mz.y, 50 + def.flash * 10, 0.06, '#ffc86a');
+    }
+    if (kind === 'bullet' || kind === 'sniper') game.particles.casing(this.x, this.y - 3, this.aim);
+    else if (kind === 'rocket' || kind === 'nade') game.particles.smoke(mz.x, mz.y, 2);
     game.sound(def.sound, this.x, this.y);
     game.shake(def.shake);
     this.recoilKick = Math.min(7, 2 + def.shake * 1.2);

@@ -1,31 +1,61 @@
 // Game data: weapons, playable characters and zombie archetypes.
 
+// Signature guns (one per character) never run out of reserve ammo. Every other gun is a world
+// pickup: `tier` controls how early it shows up (see pickDropWeapon in game.js).
+// projectile: 'bullet' (default), 'rocket', 'flame', 'nade' (lobbed grenade) or 'zap' (chain lightning).
 export const WEAPONS = {
-  pistol: {
-    short: 'PISTOL', name: 'Pistol', dmg: 14, rate: 4.5, mag: 12, reload: 1.0, spread: 0.05, speed: 400, pellets: 1,
-    range: 260, knock: 45, infinite: true, sound: 'pistol', shake: 1, flash: 1,
+  // ---- signature guns
+  carbine: {
+    short: 'CARBINE', name: 'Scout Carbine', desc: 'Accurate and quick. Never runs dry.', signature: true,
+    dmg: 15, rate: 6.5, mag: 24, reload: 1.1, spread: 0.035, speed: 440, pellets: 1,
+    range: 290, knock: 40, infinite: true, sound: 'pistol', shake: 1.1, flash: 1,
   },
+  sawedoff: {
+    short: 'SAWED-OFF', name: 'Sawed-Off', desc: 'Two barrels, huge knockback. Never runs dry.', signature: true,
+    dmg: 11, rate: 3.2, mag: 2, reload: 1.05, spread: 0.34, speed: 360, pellets: 7,
+    range: 120, knock: 120, infinite: true, sound: 'shotgun', shake: 3.5, flash: 2, recoil: 60,
+  },
+
+  // ---- pickups
   rifle: {
-    short: 'RIFLE', name: 'Assault Rifle', dmg: 13, rate: 9, mag: 30, reload: 1.5, spread: 0.07, speed: 460, pellets: 1,
+    short: 'RIFLE', name: 'Assault Rifle', tier: 1, dmg: 13, rate: 9, mag: 30, reload: 1.5, spread: 0.07, speed: 460, pellets: 1,
     range: 320, knock: 50, reserve: 210, sound: 'rifle', shake: 1.4, flash: 1.2,
   },
   shotgun: {
-    short: 'SHOTGUN', name: 'Shotgun', dmg: 10, rate: 1.4, mag: 6, reload: 1.8, spread: 0.3, speed: 380, pellets: 7,
+    short: 'SHOTGUN', name: 'Shotgun', tier: 1, dmg: 10, rate: 1.4, mag: 6, reload: 1.8, spread: 0.3, speed: 380, pellets: 7,
     range: 150, knock: 110, reserve: 42, sound: 'shotgun', shake: 4, flash: 2, recoil: 70,
   },
   smg: {
-    short: 'SMG', name: 'SMG', dmg: 8, rate: 15, mag: 40, reload: 1.3, spread: 0.14, speed: 420, pellets: 1,
+    short: 'SMG', name: 'SMG', tier: 1, dmg: 8, rate: 15, mag: 40, reload: 1.3, spread: 0.14, speed: 420, pellets: 1,
     range: 240, knock: 25, reserve: 280, sound: 'smg', shake: 1, flash: 0.9,
   },
+  flamer: {
+    short: 'FLAMER', name: 'Flamethrower', tier: 2, dmg: 4, rate: 22, mag: 100, reload: 2.4, spread: 0.22, speed: 170, pellets: 1,
+    range: 72, knock: 6, pierce: 99, reserve: 300, sound: 'flame', shake: 0.4, flash: 0, projectile: 'flame',
+  },
+  sniper: {
+    short: 'SNIPER', name: 'Sniper Rifle', tier: 2, dmg: 95, rate: 1, mag: 5, reload: 2, spread: 0.005, speed: 900, pellets: 1,
+    range: 480, knock: 140, pierce: 6, reserve: 30, sound: 'sniper', shake: 4, flash: 2.2, projectile: 'sniper',
+  },
+  tesla: {
+    short: 'TESLA', name: 'Tesla Gun', tier: 2, dmg: 22, rate: 5, mag: 30, reload: 1.8, spread: 0, speed: 0, pellets: 1,
+    range: 150, knock: 30, reserve: 150, sound: 'zap', shake: 1, flash: 0, projectile: 'zap',
+  },
+  launcher: {
+    short: 'GRENADES', name: 'Grenade Launcher', tier: 3, dmg: 55, splashR: 38, rate: 1.6, mag: 6, reload: 2.3, spread: 0.04,
+    speed: 0, pellets: 1, range: 170, knock: 0, reserve: 30, sound: 'thunk', shake: 2, flash: 1.5, projectile: 'nade',
+  },
   rocket: {
-    short: 'ROCKETS', name: 'Rocket Launcher', dmg: 30, splash: 80, splashR: 44, rate: 1.1, mag: 4, reload: 2.2, spread: 0.02,
+    short: 'ROCKETS', name: 'Rocket Launcher', tier: 3, dmg: 30, splash: 80, splashR: 44, rate: 1.1, mag: 4, reload: 2.2, spread: 0.02,
     speed: 250, pellets: 1, range: 380, knock: 0, reserve: 20, sound: 'rocket', shake: 3, flash: 2, projectile: 'rocket',
   },
   minigun: {
-    short: 'MINIGUN', name: 'Minigun', dmg: 9, rate: 24, mag: 200, reload: 3.2, spread: 0.16, speed: 460, pellets: 1,
+    short: 'MINIGUN', name: 'Minigun', tier: 3, dmg: 9, rate: 24, mag: 200, reload: 3.2, spread: 0.16, speed: 460, pellets: 1,
     range: 300, knock: 22, reserve: 600, sound: 'minigun', shake: 1.1, flash: 1, spinup: 0.55, slow: 0.55,
   },
 };
+
+export const PICKUP_WEAPONS = Object.keys(WEAPONS).filter((id) => !WEAPONS[id].signature);
 
 export const CHARACTERS = {
   red: {
@@ -35,7 +65,7 @@ export const CHARACTERS = {
     color: '#ff5a4e',
     hp: 100,
     speed: 82,
-    weapon: 'rifle',
+    weapon: 'carbine',
     ability: 'grenade',
     abilityName: 'Frag Grenade',
     abilityDesc: 'Throw a bouncing grenade that blows the horde apart.',
@@ -51,7 +81,7 @@ export const CHARACTERS = {
     color: '#4fb2ff',
     hp: 150,
     speed: 70,
-    weapon: 'shotgun',
+    weapon: 'sawedoff',
     ability: 'molotov',
     abilityName: 'Molotov',
     abilityDesc: 'Lob a firebomb that leaves a burning pool.',

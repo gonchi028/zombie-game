@@ -1,15 +1,22 @@
 # Last Light
 
 A top-down, pixel-art zombie survival game for the browser. Hold out in a dark city against waves
-of the undead, and after every wave pick one of three upgrade cards to build your run.
+of the undead, scavenge guns from the streets, and after every wave pick one of three upgrade cards
+to build your run.
 
 - **2 playable survivors**
-  - **Red**, the Scout: fast, assault rifle, frag grenade.
-  - **Bruno**, the Brawler: tanky, shotgun, molotov.
+  - **Red**, the Scout: fast, Scout Carbine, frag grenade.
+  - **Bruno**, the Brawler: tanky, Sawed-Off, molotov.
+
+  Each survivor's signature gun never runs out of ammo.
+- **Guns spawn around the city** over time. Your second slot holds whatever you find: SMG, assault
+  rifle, shotgun, flamethrower, sniper rifle, Tesla gun, grenade launcher, rocket launcher or
+  minigun. Stronger guns turn up in later waves. Walking over a gun picks it up if your slot is empty
+  or it's the same gun (more ammo). A different gun asks for a button press, and you drop the old one.
 - **Solo or local co-op.** Player 2 uses a gamepad or the arrow keys with auto-aim. Downed teammates can be revived.
 - **Waves that escalate.** Walkers, then runners, zombie dogs, brutes, acid spitters and exploding
   bloaters. **The Abomination** boss arrives every 5th wave.
-- **33 upgrades + 5 weapon cards**, in three kinds:
+- **33 upgrades**, in three kinds:
   - stat powerups
   - trade-off *modifiers* (Glass Cannon, Berserker, Trigger Happy, Juggernaut…)
   - build-defining epics (Buzzsaws, Combat Drone, Tesla Coil, Explosive Rounds, Second Wind)
@@ -40,6 +47,7 @@ python3 -m http.server 8080
 | Dash    | `Space` / `Left Shift`        | `Right Shift`              | A                |
 | Road flare | `G`                        | `'`                        | B                |
 | Reload  | `R`                           | `.`                        | X                |
+| Pick up gun | `F`                       | `;`                        | X (near a gun)   |
 | Swap gun | `E` / wheel / `1` `2`        | `,`                        | Y                |
 
 `Esc` / `P` pauses, `M` mutes. On upgrade screens, press `1` `2` `3` to pick a card and `R` to reroll.
@@ -75,7 +83,8 @@ js/
 
 ## Tweaking
 
-- **Balance:** weapon, character and zombie numbers live in `js/data.js`. Wave size and mix are in
+- **Balance:** weapon, character and zombie numbers live in `js/data.js`. Gun drop timing is at the
+  top of `js/game.js` (`DROP_EVERY`, `MAX_DROPS`…), and which guns show up when is in `pickDropWeapon()`. Wave size and mix are in
   `js/waves.js` (`mix()` and `start()`).
 - **New upgrade:** add an entry to `UPGRADES` in `js/upgrades.js`. It needs an `apply(player)`
   function. Add an optional `cond(player)` to control when the card can be offered.
