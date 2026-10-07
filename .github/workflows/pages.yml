@@ -1,0 +1,43 @@
+# Publishes the game to GitHub Pages on every push to main. The game is static files with no build
+# step, so this only copies what the browser needs (not server.js, package.json or the README).
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; a newer push waits for the running one instead of cancelling it mid-deploy.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Collect the site
+        run: |
+          mkdir -p _site/docs/screenshots
+          cp -r index.html css js _site/
+          # link previews (og:image in index.html) point at this screenshot
+          cp docs/screenshots/gameplay.png _site/docs/screenshots/
+
+      - uses: actions/configure-pages@v6
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v5

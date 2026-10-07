@@ -7,6 +7,8 @@ your run. Play solo or local co-op, with keyboard, mouse or gamepads.
 All the art, animation, sound and music are generated in code: no image files, no audio files and
 no dependencies. Open it in a browser and play.
 
+### [▶ Play it in your browser](https://gonchi028.github.io/zombie-game/)
+
 ![Red holding off a wave with a flamethrower while a road flare pulls zombies away](docs/screenshots/gameplay.png)
 
 <table>
@@ -70,8 +72,11 @@ no dependencies. Open it in a browser and play.
 
 ## Quick start
 
-The game is plain HTML, CSS and JavaScript ES modules. Browsers won't load ES modules from
-`file://`, so serve the folder over HTTP:
+The quickest way to play is the [online version](https://gonchi028.github.io/zombie-game/). It's
+published to GitHub Pages by `.github/workflows/pages.yml` on every push to `main`.
+
+To run it locally, note that the game is plain HTML, CSS and JavaScript ES modules. Browsers won't
+load ES modules from `file://`, so serve the folder over HTTP:
 
 ```bash
 git clone https://github.com/gonchi028/zombie-game.git
@@ -295,6 +300,7 @@ with the mouse, the arrow keys or a gamepad's D-pad.
 index.html          DOM shell: menus, HUD and the guide overlay the canvas
 css/style.css       UI styling; 1 "game pixel" = var(--s)
 server.js           tiny static server for `npm start`
+.github/workflows/  pages.yml publishes the game to GitHub Pages on every push to main
 docs/screenshots/   images for this README
 js/
   main.js           boot, game loop, pause and menu wiring
