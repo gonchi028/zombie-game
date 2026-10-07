@@ -91,6 +91,8 @@ export class Player {
     this.step = 0;
     this.swapT = 0;
     this.throwT = 0;
+    this.swapText = null;
+    this.newGunT = 0; // HUD flashes the primary slot after picking a new gun
   }
 
   get weapon() {
@@ -122,6 +124,7 @@ export class Player {
   setPrimary(id) {
     this.weapons[1] = new WeaponState(id, this);
     this.slot = 1;
+    this.newGunT = 2.5;
   }
   refillAmmo() {
     for (const w of this.weapons) {
@@ -166,6 +169,7 @@ export class Player {
     this.dashCd = Math.max(0, this.dashCd - dt);
     this.abilityCd = Math.max(0, this.abilityCd - dt);
     this.rage = Math.max(0, this.rage - dt);
+    this.newGunT = Math.max(0, this.newGunT - dt);
 
     if (o.aim !== null) this.aim = o.aim;
     this.aimDist = o.aimDist;
@@ -249,13 +253,16 @@ export class Player {
     this.updateCompanions(dt);
   }
 
-  switchWeapon(slot) {
+  switchWeapon(slot, note, color = '#ffb84a') {
     if (slot === this.slot) return;
     this.weapon.reloadT = 0;
     this.slot = slot;
     this.swapT = SWAP_TIME;
     this.weapon.cd = Math.max(this.weapon.cd, 0.15);
     this.game.sound('reload', this.x, this.y, 0.5);
+    // name of the gun over your head; quick swaps replace the previous popup instead of stacking
+    if (this.swapText) this.swapText.t = this.swapText.life;
+    this.swapText = this.game.particles.text(this.x, this.y - 22, note || this.weapon.def.short, note ? color : '#ffb84a', 0.7);
   }
 
   startReload() {
@@ -294,7 +301,7 @@ export class Player {
       else if (w.cd <= 0) {
         this.game.sound('empty', this.x, this.y);
         w.cd = 0.3;
-        this.switchWeapon(0);
+        this.switchWeapon(0, 'OUT OF AMMO', '#ff5a4e');
       }
       return;
     }

@@ -2,27 +2,27 @@
 
 export const WEAPONS = {
   pistol: {
-    name: 'Pistol', dmg: 14, rate: 4.5, mag: 12, reload: 1.0, spread: 0.05, speed: 400, pellets: 1,
+    short: 'PISTOL', name: 'Pistol', dmg: 14, rate: 4.5, mag: 12, reload: 1.0, spread: 0.05, speed: 400, pellets: 1,
     range: 260, knock: 45, infinite: true, sound: 'pistol', shake: 1, flash: 1,
   },
   rifle: {
-    name: 'Assault Rifle', dmg: 13, rate: 9, mag: 30, reload: 1.5, spread: 0.07, speed: 460, pellets: 1,
+    short: 'RIFLE', name: 'Assault Rifle', dmg: 13, rate: 9, mag: 30, reload: 1.5, spread: 0.07, speed: 460, pellets: 1,
     range: 320, knock: 50, reserve: 210, sound: 'rifle', shake: 1.4, flash: 1.2,
   },
   shotgun: {
-    name: 'Shotgun', dmg: 10, rate: 1.4, mag: 6, reload: 1.8, spread: 0.3, speed: 380, pellets: 7,
+    short: 'SHOTGUN', name: 'Shotgun', dmg: 10, rate: 1.4, mag: 6, reload: 1.8, spread: 0.3, speed: 380, pellets: 7,
     range: 150, knock: 110, reserve: 42, sound: 'shotgun', shake: 4, flash: 2, recoil: 70,
   },
   smg: {
-    name: 'SMG', dmg: 8, rate: 15, mag: 40, reload: 1.3, spread: 0.14, speed: 420, pellets: 1,
+    short: 'SMG', name: 'SMG', dmg: 8, rate: 15, mag: 40, reload: 1.3, spread: 0.14, speed: 420, pellets: 1,
     range: 240, knock: 25, reserve: 280, sound: 'smg', shake: 1, flash: 0.9,
   },
   rocket: {
-    name: 'Rocket Launcher', dmg: 30, splash: 80, splashR: 44, rate: 1.1, mag: 4, reload: 2.2, spread: 0.02,
+    short: 'ROCKETS', name: 'Rocket Launcher', dmg: 30, splash: 80, splashR: 44, rate: 1.1, mag: 4, reload: 2.2, spread: 0.02,
     speed: 250, pellets: 1, range: 380, knock: 0, reserve: 20, sound: 'rocket', shake: 3, flash: 2, projectile: 'rocket',
   },
   minigun: {
-    name: 'Minigun', dmg: 9, rate: 24, mag: 200, reload: 3.2, spread: 0.16, speed: 460, pellets: 1,
+    short: 'MINIGUN', name: 'Minigun', dmg: 9, rate: 24, mag: 200, reload: 3.2, spread: 0.16, speed: 460, pellets: 1,
     range: 300, knock: 22, reserve: 600, sound: 'minigun', shake: 1.1, flash: 1, spinup: 0.55, slow: 0.55,
   },
 };

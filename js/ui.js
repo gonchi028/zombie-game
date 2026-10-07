@@ -285,13 +285,14 @@ export class UI {
       const hpFill = el('i', 'pp-hp-fill');
       const hpText = el('span', 'pp-hp-text');
       hp.append(hpFill, hpText);
+      // magazine: shells for small mags, a segmented bar for big ones
       const wpn = el('div', 'pp-weapon');
-      const gunBox = el('span', 'pp-gun');
+      const mag = el('div', 'mag');
       const ammo = el('span', 'pp-ammo');
       const reserve = el('span', 'pp-reserve');
       const count = el('span', 'pp-count');
       count.append(ammo, ' ', reserve);
-      wpn.append(gunBox, count);
+      wpn.append(mag, count);
       const cds = el('div', 'pp-cds');
       const ab = el('div', 'cd');
       ab.append(pix(icon(p.char.ability === 'grenade' ? 'bomb' : 'flame'), 2));
@@ -308,9 +309,19 @@ export class UI {
       const buffs = el('span', 'pp-buffs');
       cds.append(ab, da, fl, buffs);
       main.append(name, hp, wpn, cds);
-      panel.append(portrait, main);
+      // weapon rack: active gun big and bright, holstered gun small and dim
+      const rack = el('div', 'pp-rack');
+      const slots = [0, 1].map((n) => {
+        const node = el('div', 'slot');
+        const gun = el('span', 'slot-gun');
+        const label = el('span', 'slot-label');
+        node.append(el('span', 'slot-key', String(n + 1)), gun, label);
+        rack.append(node);
+        return { node, gun, label, gunKey: null };
+      });
+      panel.append(portrait, main, rack);
       wrap.append(panel);
-      return { panel, hpFill, hpText, gunBox, ammo, reserve, abFill, daFill, fl, flCount, buffs, gunId: null };
+      return { panel, hpFill, hpText, mag, ammo, reserve, abFill, daFill, fl, flCount, buffs, slots, magKey: null, slot: null };
     });
   }
 
@@ -349,13 +360,11 @@ export class UI {
       const hpText = p.state === 'downed' ? 'DOWN — GET REVIVED' : p.state === 'dead' ? 'DEAD — BACK NEXT WAVE' : `${Math.ceil(p.hp)} / ${p.maxHp}`;
       this.set(k('hpt'), P.hpText, 'text', hpText);
       const wpn = p.weapon;
-      if (P.gunId !== wpn.id) {
-        P.gunId = wpn.id;
-        P.gunBox.innerHTML = '';
-        P.gunBox.append(pix(SPR.guns[wpn.id].img, 2));
-      }
+      this.updateMag(P, k, wpn);
       this.set(k('ammo'), P.ammo, 'text', wpn.reloadT > 0 ? 'RELOAD' : String(wpn.ammo));
+      this.set(k('ammoc'), P.ammo, 'class', wpn.reloadT > 0 ? 'pp-ammo reloading' : 'pp-ammo');
       this.set(k('res'), P.reserve, 'text', wpn.def.infinite ? '/ ∞' : `/ ${wpn.reserve}`);
+      this.updateRack(P, k, p);
       const abK = p.abilityCd / (p.char.abilityCd * p.stats.abilityCdMul);
       this.set(k('ab'), P.abFill, 'height', `${Math.round(Math.max(0, abK) * 100)}%`);
       this.set(k('da'), P.daFill, 'height', `${Math.round(Math.max(0, p.dashCd / (1.3 * p.stats.dashCdMul)) * 100)}%`);
@@ -365,6 +374,59 @@ export class UI {
       if (p.rage > 0) buffs.push(`RAGE ${Math.ceil(p.rage)}`);
       if (p.stats.secondWind) buffs.push('2ND WIND');
       this.set(k('buffs'), P.buffs, 'text', buffs.join(' · '));
+    });
+  }
+
+  updateMag(P, k, w) {
+    const size = w.magSize();
+    const shells = size <= 16;
+    const key = `${w.owner.slot}:${w.id}:${size}`;
+    if (P.magKey !== key) {
+      // rebuild when the gun or its mag size changes
+      P.magKey = key;
+      P.mag.innerHTML = '';
+      P.shells = [];
+      if (shells) {
+        for (let i = 0; i < size; i++) P.shells.push(P.mag.appendChild(el('i', 'shell')));
+      } else {
+        P.magFill = P.mag.appendChild(el('i', 'mag-fill'));
+      }
+      this.hudCache.delete(k('magc'));
+      this.hudCache.delete(k('magn'));
+    }
+    const reloading = w.reloadT > 0;
+    const frac = reloading ? 1 - w.reloadT / w.reloadTime() : w.ammo / size;
+    const low = !reloading && w.ammo <= Math.max(1, Math.floor(size * 0.25));
+    this.set(k('magc'), P.mag, 'class', `mag ${shells ? 'shells' : 'bar'}${reloading ? ' reloading' : ''}${low ? ' low' : ''}`);
+    if (shells) {
+      const n = Math.round(frac * size);
+      if (this.hudCache.get(k('magn')) !== n) {
+        this.hudCache.set(k('magn'), n);
+        P.shells.forEach((s, i) => (s.className = i < n ? 'shell' : 'shell spent'));
+      }
+    } else {
+      this.set(k('magn'), P.magFill, 'width', `${(frac * 100).toFixed(1)}%`);
+    }
+  }
+
+  updateRack(P, k, p) {
+    // the slots pop for a moment after a swap
+    if (P.slot !== null && P.slot !== p.slot) P.popUntil = performance.now() + 260;
+    P.slot = p.slot;
+    const pop = performance.now() < (P.popUntil || 0);
+    p.weapons.forEach((w, n) => {
+      const S = P.slots[n];
+      const active = n === p.slot;
+      if (S.gunKey !== `${w.id}:${active}`) {
+        S.gunKey = `${w.id}:${active}`;
+        S.gun.innerHTML = '';
+        S.gun.append(pix(SPR.guns[w.id].img, active ? 2 : 1));
+      }
+      const dry = !w.def.infinite && w.ammo + w.reserve <= 0;
+      const label = active ? w.def.short : dry ? 'EMPTY' : w.def.infinite ? '∞' : String(w.ammo + w.reserve);
+      this.set(k(`sl${n}`), S.label, 'text', label);
+      const fresh = n === 1 && p.newGunT > 0;
+      this.set(k(`sc${n}`), S.node, 'class', `slot ${active ? 'active' : 'holster'}${dry ? ' dry' : ''}${fresh ? ' fresh' : ''}${pop ? ' pop' : ''}`);
     });
   }
 

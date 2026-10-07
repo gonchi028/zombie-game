@@ -464,15 +464,84 @@ kbd {
   border: calc(var(--s) * 1) solid var(--pc);
   box-shadow: 0 calc(var(--s) * 2) 0 #000;
 }
-.pp-main { display: grid; gap: 0.3em; min-width: 14em; }
+.pp-main { display: grid; gap: 0.3em; width: 15.5em; grid-template-columns: minmax(0, 1fr); } /* fixed: swapping guns must not resize the panel */
 .pp-name { font-family: var(--pixel); font-size: 0.5em; color: var(--pc); text-shadow: 0 0.2em 0 #000; }
 .pp-hp { position: relative; height: 1.2em; background: #1a0808; border: calc(var(--s) * 1) solid #000; }
 .pp-hp-fill { position: absolute; inset: 0 auto 0 0; background: linear-gradient(#e0453a, #a02424); transition: width 0.12s; }
 .pp.right .pp-hp-fill { inset: 0 0 0 auto; }
 .pp-hp-text { position: relative; font-family: var(--pixel); font-size: 0.45em; line-height: 2.8; padding: 0 0.6em; text-shadow: 0 0.2em 0 #000; }
-.pp-weapon { display: flex; align-items: center; gap: 0.5em; text-shadow: 0 0.12em 0 #000; }
+.pp-weapon { height: 1.9em; display: flex; align-items: center; gap: 0.5em; text-shadow: 0 0.12em 0 #000; }
 .pp.right .pp-weapon { flex-direction: row-reverse; }
+
+/* magazine: one shell per round for small mags, a segmented bar for big ones */
+.mag { --px: calc(var(--s) * 1); flex: none; width: 7em; height: 1.3em; display: flex; align-items: center; gap: var(--px); }
+.pp.right .mag.shells { justify-content: flex-end; }
+.mag .shell { width: calc(var(--px) * 2); height: 1.3em; background: linear-gradient(#ffe08a 0 30%, #c9942e 30%); box-shadow: 0 var(--px) 0 #000; }
+.mag .shell.spent { background: #2a2630; }
+.mag.bar { position: relative; width: 7em; height: 1em; background: #1a1620; border: var(--px) solid #000; }
+.mag-fill { position: absolute; inset: 0 auto 0 0; background: linear-gradient(#ffe08a, #c9942e); }
+.pp.right .mag-fill { inset: 0 0 0 auto; }
+.mag.bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(90deg, transparent 0 calc(10% - var(--px)), rgba(0, 0, 0, 0.75) calc(10% - var(--px)) 10%);
+}
+.mag.low .shell:not(.spent), .mag.low .mag-fill { background: #ff5a4e; animation: low-blink 0.5s steps(1) infinite; }
+.mag.reloading .shell:not(.spent), .mag.reloading .mag-fill { background: #e8e0c8; opacity: 0.75; }
+@keyframes low-blink { 50% { background: #7a1e1a; } }
+
+/* weapon rack */
+.pp-rack { --px: calc(var(--s) * 1); display: flex; flex-direction: column; gap: 0.3em; align-items: flex-start; }
+.pp.right .pp-rack { align-items: flex-end; }
+.slot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  background: rgba(10, 9, 14, 0.8);
+  border: var(--px) solid #3a3440;
+  box-shadow: 0 calc(var(--px) * 2) 0 #000;
+}
+.slot.active {
+  order: 0;
+  width: 9em;
+  height: 3.2em;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.3em;
+  border-color: var(--weapon);
+  background: linear-gradient(180deg, rgba(255, 184, 74, 0.16), rgba(10, 9, 14, 0.85) 70%);
+  box-shadow: 0 calc(var(--px) * 2) 0 #000, 0 0 0.8em rgba(255, 184, 74, 0.25);
+}
+.slot.holster { order: 1; width: 6em; height: 2.2em; padding: 0 0.4em; opacity: 0.75; }
+.pp.right .slot.holster { flex-direction: row-reverse; }
+.slot-key { position: absolute; top: 0.2em; right: 0.3em; font-family: var(--pixel); font-size: 0.3em; color: var(--muted); }
+.pp.right .slot-key { right: auto; left: 0.3em; }
+.slot-label { font-family: var(--pixel); font-size: 0.4em; }
+.slot.active .slot-label { color: var(--weapon); text-shadow: 0 0.2em 0 #000; }
+.slot.holster .slot-label { font-family: var(--body); font-size: 1.15em; color: #c9bda3; }
+.slot.dry { border-color: #6a2a26; }
+.slot.dry .slot-label, .slot.holster.dry .slot-label { font-family: var(--pixel); font-size: 0.35em; color: #ff5a4e; }
+.slot.dry canvas { opacity: 0.35; filter: grayscale(1); }
+.slot.fresh::after {
+  content: 'NEW';
+  position: absolute;
+  top: -0.55em;
+  left: 0.3em;
+  padding: 0.15em 0.3em;
+  font-family: var(--pixel);
+  font-size: 0.3em;
+  color: #120e14;
+  background: var(--weapon);
+  animation: low-blink-new 0.4s steps(1) infinite;
+}
+@keyframes low-blink-new { 50% { background: #fff6c8; } }
+.slot.pop { animation: slot-pop 0.26s ease-out; }
+@keyframes slot-pop { from { transform: scale(1.18); filter: brightness(1.8); } }
+.pp-count { white-space: nowrap; line-height: 1; } /* '∞' falls back to a taller font */
 .pp-ammo { font-family: var(--pixel); font-size: 0.9em; }
+.pp-ammo.reloading { font-size: 0.55em; color: #e8e0c8; }
 .pp-reserve { font-size: 1.5em; color: #c9bda3; }
 .pp-cds { display: flex; gap: 0.35em; align-items: center; }
 .pp.right .pp-cds { flex-direction: row-reverse; }
@@ -492,7 +561,7 @@ kbd {
 .cd.item.empty canvas { opacity: 0.25; filter: grayscale(1); }
 .cd-count { position: absolute; top: 0.1em; left: 0.2em; font-family: var(--pixel); font-size: 0.3em; font-weight: normal; color: #ff8a6a; }
 .cd-key { position: absolute; bottom: 0.05em; right: 0.15em; font-family: var(--pixel); font-size: 0.3em; color: var(--muted); }
-.pp-buffs { font-family: var(--pixel); font-size: 0.45em; color: #ffd24a; margin: 0 0.5em; }
+.pp-buffs { flex: 1; min-width: 0; font-family: var(--pixel); font-size: 0.45em; line-height: 1.4; color: #ffd24a; margin: 0 0.5em; }
 .pp.hurt .pp-portrait { border-color: #fff; background: rgba(160, 20, 20, 0.7); }
 .pp.rage .pp-portrait { box-shadow: 0 0 1em rgba(255, 40, 40, 0.8); }
 .pp.downed, .pp.dead { filter: grayscale(1) brightness(0.7); }

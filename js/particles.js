@@ -159,7 +159,7 @@ export class Particles {
   }
 
   text(x, y, str, color = '#fff', life = 0.9) {
-    this.add({ type: 'text', x, y, vy: -22, drag: 2, life, str, color });
+    return this.add({ type: 'text', x, y, vy: -22, drag: 2, life, str, color });
   }
 
   muzzle(x, y, angle, scale = 1) {
