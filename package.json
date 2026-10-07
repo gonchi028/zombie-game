@@ -1,0 +1,10 @@
+{
+  "name": "last-light",
+  "version": "0.1.0",
+  "description": "2D top-down pixel-art zombie wave survival game with roguelite upgrades.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  }
+}

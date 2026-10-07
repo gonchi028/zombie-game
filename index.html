@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Last Light</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Crect width='8' height='8' fill='%23120e14'/%3E%3Crect x='2' y='1' width='4' height='5' fill='%237f9a62'/%3E%3Crect x='2' y='3' width='1' height='1' fill='%23f5e56b'/%3E%3Crect x='5' y='3' width='1' height='1' fill='%23f5e56b'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="stage">
+    <canvas id="game" width="480" height="270"></canvas>
+
+    <div id="hud" class="hidden">
+      <div class="hud-top">
+        <div class="hud-stat"><div class="label">SCORE</div><div id="hud-score" class="value">0</div></div>
+        <div class="hud-wave"><div id="hud-wave">WAVE 1</div><div id="hud-left"></div></div>
+        <div class="hud-stat right"><div class="label">KILLS</div><div id="hud-kills" class="value">0</div></div>
+      </div>
+      <div id="hud-boss" class="hidden">
+        <div class="boss-name">THE ABOMINATION</div>
+        <div class="boss-bar"><i id="hud-boss-fill"></i></div>
+      </div>
+      <div id="hud-players"></div>
+    </div>
+
+    <div id="banner" class="hidden"><div id="banner-title"></div><div id="banner-sub"></div></div>
+
+    <section id="scr-title" class="screen">
+      <div class="logo"><span class="logo-last">LAST</span><span class="logo-light">LIGHT</span></div>
+      <div class="tagline">THE CITY FELL. SURVIVE THE NIGHT, ONE WAVE AT A TIME.</div>
+      <div class="menu">
+        <button class="btn primary" data-action="solo">1 PLAYER</button>
+        <button class="btn" data-action="coop">2 PLAYERS · CO-OP</button>
+        <button class="btn" data-action="controls">CONTROLS</button>
+      </div>
+      <div class="title-foot"><span id="title-best"></span><span id="title-sound"></span></div>
+    </section>
+
+    <section id="scr-select" class="screen">
+      <h2 id="select-title">CHOOSE YOUR SURVIVOR</h2>
+      <div class="char-row" id="char-row"></div>
+      <div class="hint" id="select-hint"></div>
+      <button class="btn small" data-action="back">BACK</button>
+    </section>
+
+    <section id="scr-upgrade" class="screen dim">
+      <h2 id="up-title"></h2>
+      <div id="up-sub" class="sub"></div>
+      <div class="cards" id="up-cards"></div>
+      <div class="up-foot">
+        <button class="btn small" id="up-reroll">REROLL (1)</button>
+        <span class="hint">1 / 2 / 3 TO PICK · R TO REROLL</span>
+      </div>
+      <div class="owned" id="up-owned"></div>
+    </section>
+
+    <section id="scr-pause" class="screen dim">
+      <h2>PAUSED</h2>
+      <div class="menu">
+        <button class="btn primary" data-action="resume">RESUME</button>
+        <button class="btn" data-action="restart">RESTART</button>
+        <button class="btn" data-action="mute">SOUND: ON</button>
+        <button class="btn" data-action="quit">QUIT TO TITLE</button>
+      </div>
+      <div class="owned" id="pause-owned"></div>
+    </section>
+
+    <section id="scr-over" class="screen dim">
+      <h2 class="dead">YOU DIED</h2>
+      <div id="over-stats"></div>
+      <div class="menu row">
+        <button class="btn primary" data-action="restart">TRY AGAIN</button>
+        <button class="btn" data-action="quit">TITLE</button>
+      </div>
+    </section>
+
+    <section id="scr-controls" class="screen dim">
+      <h2>CONTROLS</h2>
+      <div class="controls-grid">
+        <div class="ctl-col">
+          <h3>PLAYER 1 · KEYBOARD + MOUSE</h3>
+          <p><kbd>W A S D</kbd> move</p>
+          <p><kbd>MOUSE</kbd> aim · <kbd>LEFT CLICK</kbd> shoot</p>
+          <p><kbd>Q</kbd> / <kbd>RIGHT CLICK</kbd> ability</p>
+          <p><kbd>SPACE</kbd> / <kbd>L-SHIFT</kbd> dash</p>
+          <p><kbd>R</kbd> reload · <kbd>E</kbd> / <kbd>WHEEL</kbd> / <kbd>1</kbd><kbd>2</kbd> swap gun</p>
+        </div>
+        <div class="ctl-col">
+          <h3>PLAYER 2 · ARROWS (AUTO-AIM)</h3>
+          <p><kbd>ARROWS</kbd> move</p>
+          <p><kbd>ENTER</kbd> shoot (aims at nearest zombie)</p>
+          <p><kbd>/</kbd> ability · <kbd>R-SHIFT</kbd> dash</p>
+          <p><kbd>.</kbd> reload · <kbd>,</kbd> swap gun</p>
+        </div>
+        <div class="ctl-col">
+          <h3>GAMEPAD (EITHER PLAYER)</h3>
+          <p><kbd>L-STICK</kbd> move · <kbd>R-STICK</kbd> aim</p>
+          <p><kbd>RT</kbd> shoot · <kbd>LT</kbd> / <kbd>LB</kbd> ability</p>
+          <p><kbd>A</kbd> dash · <kbd>X</kbd> reload · <kbd>Y</kbd> swap</p>
+          <p><kbd>START</kbd> pause</p>
+        </div>
+      </div>
+      <p class="hint">ESC / P PAUSE · M MUTE · IN CO-OP, STAND NEXT TO A DOWNED FRIEND TO REVIVE THEM</p>
+      <button class="btn small" data-action="back">BACK</button>
+    </section>
+  </div>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
