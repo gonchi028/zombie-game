@@ -244,7 +244,7 @@ function controlsTab() {
     grid.append(c);
   }
   const foot = el('div', 'g-desc g-foot');
-  foot.append(kbdRow([['ESC', 'P'], 'pause', ['M'], 'mute']));
+  foot.append(kbdRow([['ESC', 'P'], 'pause', ['M'], 'mute', ['N'], 'music']));
   return [grid, foot];
 }
 

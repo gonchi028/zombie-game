@@ -83,8 +83,19 @@ export class UI {
   }
 
   refreshMute(muted) {
-    $('title-sound').textContent = `[M] SOUND ${muted ? 'OFF' : 'ON'}`;
+    this.muted = muted;
     document.querySelectorAll('[data-action="mute"]').forEach((b) => (b.textContent = `SOUND: ${muted ? 'OFF' : 'ON'}`));
+    this.renderAudioHint();
+  }
+
+  refreshMusic(on) {
+    this.musicOn = on;
+    document.querySelectorAll('[data-action="music"]').forEach((b) => (b.textContent = `MUSIC: ${on ? 'ON' : 'OFF'}`));
+    this.renderAudioHint();
+  }
+
+  renderAudioHint() {
+    $('title-sound').textContent = `[M] SOUND ${this.muted ? 'OFF' : 'ON'} · [N] MUSIC ${this.musicOn === false ? 'OFF' : 'ON'}`;
   }
 
   // The guide opens from the title or the pause menu, and BACK returns to wherever it came from.

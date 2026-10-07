@@ -2,6 +2,7 @@
 import { buildAllSprites } from './sprites.js';
 import { Input, KeyboardMouseController, ArrowsController, GamepadController, HybridController } from './input.js';
 import { Sfx } from './audio.js';
+import { Music } from './music.js';
 import { UI } from './ui.js';
 import { Game } from './game.js';
 
@@ -10,6 +11,7 @@ buildAllSprites();
 const canvas = document.getElementById('game');
 const input = new Input(canvas);
 const sfx = new Sfx();
+const music = new Music(sfx);
 let game = null;
 
 function controllersFor(mode) {
@@ -52,6 +54,7 @@ const ui = new UI({
   },
   quit: toTitle,
   mute: () => ui.refreshMute(sfx.toggleMute()),
+  music: () => ui.refreshMusic(music.toggle()),
 });
 
 function startRun(mode, chars) {
@@ -60,6 +63,7 @@ function startRun(mode, chars) {
 }
 
 game = new Game({ canvas, ui, sfx, input });
+ui.refreshMusic(music.enabled);
 ui.showTitle(game.best, sfx.muted);
 
 // Browsers only allow audio after a user gesture.
@@ -74,6 +78,8 @@ window.addEventListener('keydown', (e) => {
     else if (game.state === 'paused') resume();
   } else if (e.code === 'KeyM') {
     ui.refreshMute(sfx.toggleMute());
+  } else if (e.code === 'KeyN') {
+    ui.refreshMusic(music.toggle());
   }
 });
 window.addEventListener('blur', pause);
@@ -93,6 +99,7 @@ function frame(now) {
       else if (game.state === 'paused') resume();
     }
     game.update(dt);
+    music.update(dt, game);
     game.render();
     ui.pollGamepad(input, dt);
   } catch (err) {
@@ -106,3 +113,4 @@ requestAnimationFrame(frame);
 
 // Handy for debugging from the console.
 window.__game = game;
+window.__music = music;

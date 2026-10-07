@@ -4,8 +4,8 @@
 of the undead, scavenge guns from the streets, and after every wave pick an upgrade card to build
 your run. Play solo or local co-op, with keyboard, mouse or gamepads.
 
-All the art, animation and sound are generated in code: no image files, no audio files and no
-dependencies. Open it in a browser and play.
+All the art, animation, sound and music are generated in code: no image files, no audio files and
+no dependencies. Open it in a browser and play.
 
 ![Red holding off a wave with a flamethrower while a road flare pulls zombies away](docs/screenshots/gameplay.png)
 
@@ -53,6 +53,9 @@ dependencies. Open it in a browser and play.
 - **Road flares** turn up when you're swarmed. Throw one and nearby zombies chase it instead of you.
 - **Night-time lighting.** Flashlight cones blocked by walls, street lamps, flickering neon,
   police sirens, burning barrels and glowing zombie eyes. Blood and corpses stay where they fall.
+- **An adaptive soundtrack.** Eerie ambience on the title screen, a driving track during waves that
+  builds as the horde closes in, a heavier theme when the boss shows up, and a calm theme between
+  waves. All of it is synthesized live.
 - **Juicy animation.** Characters squash, stretch, lean and bob. Zombies flinch from hits and
   ragdoll across the street when they die.
 - **Solo or local co-op**, with revives. Keyboard + mouse, arrow keys with auto-aim, or gamepads.
@@ -241,7 +244,8 @@ other three.
 | Road flare | `G` | `'` | B |
 | Pause | `Esc` / `P` | | Start |
 
-`M` mutes. On the upgrade screen, press `1` `2` `3` to pick a card and `R` to reroll. Menus work
+`M` mutes everything and `N` turns the music on or off. Both are remembered between visits. On the
+upgrade screen, press `1` `2` `3` to pick a card and `R` to reroll. Menus work
 with the mouse, the arrow keys or a gamepad's D-pad.
 
 ## Under the hood
@@ -261,7 +265,11 @@ with the mouse, the arrow keys or a gamepad's D-pad.
 - **Zombie AI.** A Dijkstra flow field toward the players is recomputed a few times a second, so a
   horde of up to 95 zombies paths around buildings cheaply. A spatial grid handles crowd separation
   and hit tests.
-- **Sound.** Every effect is synthesized with the Web Audio API from oscillators and filtered noise.
+- **Sound and music.** Every effect is synthesized with the Web Audio API from oscillators and
+  filtered noise. The soundtrack (`js/music.js`) is a small step sequencer that schedules synthesized
+  drums, bass, pads, arpeggios and bells slightly ahead of the audio clock. It switches between five
+  moods (title, wave, boss, calm, game over) with crossfades. During waves, layers fade in as zombies
+  close in on you. Pausing muffles and lowers it.
 
 ## Project layout
 
@@ -285,6 +293,7 @@ js/
   particles.js      particles and permanent decals: blood, corpses, ragdolls, scorch marks
   tracker.js        motion tracker radar (Motion Tracker and Deep Scan upgrades)
   audio.js          procedural Web Audio sound effects
+  music.js          procedural adaptive soundtrack: step sequencer, synth instruments, moods
   input.js          keyboard, mouse and gamepad input, plus per-player controllers
   ui.js             menus, upgrade cards, HUD and weapon rack
   guide.js          the How to Play screen, built from the game's own data and sprites
@@ -312,6 +321,9 @@ js/
 - **New upgrade.** Add an entry to `UPGRADES` in `js/upgrades.js` with an `apply(player)` function,
   and an optional `cond(player)` to control when it can be offered. Add its id to a `CATEGORY` list
   to give the card its color.
+- **Music.** Each mood in `js/music.js` is a method that gets called once per 16th note. Change the
+  chords, bass patterns or tempo in the `WAVE`, `BOSS` and `CALM` tables at the top, or the
+  volume in `VOLUME`.
 - **New art.** Sprites are strings in `js/sprites.js`. Each character is a palette key, and `.` is
   transparent.
 - **Debugging.** The live game object is `window.__game` in the browser console.
