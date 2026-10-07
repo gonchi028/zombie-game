@@ -63,6 +63,10 @@ no dependencies. Open it in a browser and play.
 - **Juicy animation.** Characters squash, stretch, lean and bob. Zombies flinch from hits and
   ragdoll across the street when they die.
 - **Solo or local co-op**, with revives. Keyboard + mouse, arrow keys with auto-aim, or gamepads.
+- **Plays on phones and tablets.** On-screen twin sticks with aim assist and thumb-sized buttons
+  appear as soon as you touch the screen. A fullscreen button sits on the title screen and next to
+  the pause button. On iPhones, which don't allow fullscreen web pages, it shows how to add the game
+  to the Home Screen, where it opens fullscreen and in landscape like an app.
 - **A built-in How to Play guide** covering every survivor, weapon, zombie, wave type, pickup and
   control.
 - **A living title screen.** The city waits in the dark until you press a key, then the street lamps
@@ -90,7 +94,7 @@ There's nothing to install. If you don't have Node, any static server works:
 python3 -m http.server 8080
 ```
 
-Use a recent desktop browser (Chrome, Edge, Firefox or Safari). Set the `PORT` environment
+Use a recent browser (Chrome, Edge, Firefox or Safari), on a computer, phone or tablet. Set the `PORT` environment
 variable to serve on a different port.
 
 ## How to play
@@ -254,22 +258,30 @@ other three.
 
 ## Controls
 
-| Action | Player 1 (keyboard + mouse) | Player 2 (arrow keys) | Gamepad |
-| --- | --- | --- | --- |
-| Move | `W` `A` `S` `D` | Arrows | Left stick |
-| Aim | Mouse | Auto-aim (nearest zombie) | Right stick |
-| Shoot | Left click | `Enter` | RT |
-| Ability | `Q` / right click | `/` | LT / LB |
-| Dash | `Space` / `Left Shift` | `Right Shift` | A |
-| Reload | `R` | `.` | X |
-| Swap gun | `E` / wheel / `1` `2` | `,` | Y |
-| Pick up gun | `F` | `;` | X (near a gun) |
-| Road flare | `G` | `'` | B |
-| Pause | `Esc` / `P` | | Start |
+| Action | Player 1 (keyboard + mouse) | Player 2 (arrow keys) | Gamepad | Touch (player 1) |
+| --- | --- | --- | --- | --- |
+| Move | `W` `A` `S` `D` | Arrows | Left stick | Drag on the left half |
+| Aim | Mouse | Auto-aim (nearest zombie) | Right stick | Drag on the right half |
+| Shoot | Left click | `Enter` | RT | Push the aim stick further |
+| Ability | `Q` / right click | `/` | LT / LB | Ability button |
+| Dash | `Space` / `Left Shift` | `Right Shift` | A | Dash button |
+| Reload | `R` | `.` | X | Reload button |
+| Swap gun | `E` / wheel / `1` `2` | `,` | Y | Swap button (shows your other gun) |
+| Pick up gun | `F` | `;` | X (near a gun) | Reload button (turns into TAKE) |
+| Road flare | `G` | `'` | B | Flare button |
+| Pause | `Esc` / `P` | | Start | `II` in the top-left corner |
 
 `M` mutes everything and `N` turns the music on or off. Both are remembered between visits. On the
 upgrade screen, press `1` `2` `3` to pick a card and `R` to reroll. Menus work
-with the mouse, the arrow keys or a gamepad's D-pad.
+with the mouse, the arrow keys, a gamepad's D-pad or a tap.
+
+The touch controls show up when you touch the screen, and go away when you move a mouse. The move
+and aim sticks appear wherever your thumbs land. The aim stick has a little aim assist: it locks on to
+a zombie within about 20° of where you point. In co-op on a tablet, player 2 uses a gamepad.
+
+For fullscreen, tap the corner button on the title screen or next to the pause button (on desktop,
+it's also in the pause menu). iPhones don't let web pages go fullscreen, so there the button explains
+how to add Last Light to the Home Screen instead: tap Share, then **Add to Home Screen**.
 
 ## Under the hood
 
@@ -298,6 +310,8 @@ with the mouse, the arrow keys or a gamepad's D-pad.
 
 ```
 index.html          DOM shell: menus, HUD and the guide overlay the canvas
+manifest.webmanifest  lets phones install the game to the Home Screen (fullscreen, landscape)
+icons/              Home Screen icons, scaled up from the favicon's pixel zombie
 css/style.css       UI styling; 1 "game pixel" = var(--s)
 server.js           tiny static server for `npm start`
 .github/workflows/  pages.yml publishes the game to GitHub Pages on every push to main
@@ -318,7 +332,9 @@ js/
   tracker.js        motion tracker radar (Motion Tracker and Deep Scan upgrades)
   audio.js          procedural Web Audio sound effects
   music.js          procedural adaptive soundtrack: step sequencer, synth instruments, moods
-  input.js          keyboard, mouse and gamepad input, plus per-player controllers
+  input.js          keyboard, mouse, gamepad and touch input, plus per-player controllers
+  touch.js          on-screen sticks and buttons for phones and tablets
+  fullscreen.js     fullscreen toggle (with the prefixed API older iPads need)
   ui.js             menus, upgrade cards, HUD and weapon rack
   records.js        lifetime records saved after every game over (shown on the Records screen)
   guide.js          the How to Play screen, built from the game's own data and sprites

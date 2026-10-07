@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#030305" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Last Light</title>
   <meta name="description" content="A top-down pixel-art zombie survival game for the browser. Hold out against waves of the undead, solo or local co-op." />
   <!-- link previews when the game's URL is shared -->
@@ -16,6 +20,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/icon-180.png" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -35,9 +41,16 @@
       <div id="hud-players"></div>
     </div>
 
+    <!-- phones and tablets: sticks and buttons, shown only while playing in touch mode (touch.js) -->
+    <div id="touch" class="hidden">
+      <div id="touch-pause" class="tbtn"><span class="tart">II</span></div>
+      <div id="touch-fs" class="tbtn fs-only" aria-label="Fullscreen"><svg class="fs-icon" viewBox="0 0 9 9" shape-rendering="crispEdges" aria-hidden="true"><path class="fs-enter" d="M0 0h3v1H1v2H0zM6 0h3v3H8V1H6zM0 6h1v2h2v1H0zM8 6h1v3H6V8h2z"/><path class="fs-exit" d="M2 0h1v3H0V2h2zM6 0h1v2h2v1H6zM0 6h3v3H2V7H0zM6 6h3v1H7v2H6z"/></svg></div>
+    </div>
+
     <div id="banner" class="hidden"><div id="banner-title"></div><div id="banner-sub"></div></div>
 
     <section id="scr-title" class="screen asleep">
+      <button class="btn icon fs-btn" data-action="fullscreen" aria-label="Fullscreen"><svg class="fs-icon" viewBox="0 0 9 9" shape-rendering="crispEdges" aria-hidden="true"><path class="fs-enter" d="M0 0h3v1H1v2H0zM6 0h3v3H8V1H6zM0 6h1v2h2v1H0zM8 6h1v3H6V8h2z"/><path class="fs-exit" d="M2 0h1v3H0V2h2zM6 0h1v2h2v1H6zM0 6h3v3H2V7H0zM6 6h3v1H7v2H6z"/></svg></button>
       <div class="logo"><span class="logo-last">LAST</span><span class="logo-light off" id="logo-light">LIGHT</span></div>
       <div class="tagline">THE CITY FELL. SURVIVE THE NIGHT, ONE WAVE AT A TIME.</div>
       <div class="menu">
@@ -46,8 +59,23 @@
         <button class="btn" data-action="guide">HOW TO PLAY</button>
         <button class="btn" data-action="records">RECORDS</button>
       </div>
-      <div class="press-start">PRESS ANY KEY</div>
+      <div class="press-start"><span class="kbd-only">PRESS ANY KEY</span><span class="touch-only">TAP TO START</span></div>
       <div class="title-foot"><span id="title-best"></span><span id="title-sound"></span></div>
+    </section>
+
+    <!-- iPhones can't make web pages fullscreen: the fullscreen button shows this instead -->
+    <section id="scr-fstip" class="screen dim">
+      <h2>PLAY FULLSCREEN</h2>
+      <div class="fs-tip">
+        <p>iPhones don't let web pages go fullscreen. Add Last Light to your Home Screen instead, and it
+          opens fullscreen like an app:</p>
+        <ol>
+          <li>Tap the <b>Share</b> button (in Safari's toolbar, or Chrome's address bar).</li>
+          <li>Choose <b>Add to Home Screen</b>.</li>
+          <li>Open <b>Last Light</b> from your Home Screen.</li>
+        </ol>
+      </div>
+      <button class="btn small" data-action="back">BACK</button>
     </section>
 
     <section id="scr-records" class="screen dim">
@@ -71,7 +99,7 @@
       <div class="cards" id="up-cards"></div>
       <div class="up-foot">
         <button class="btn small" id="up-reroll">REROLL (1)</button>
-        <span class="hint">1 / 2 / 3 TO PICK · R TO REROLL</span>
+        <span class="hint kbd-only">1 / 2 / 3 TO PICK · R TO REROLL</span>
       </div>
       <div class="owned" id="up-owned"></div>
     </section>
@@ -84,6 +112,7 @@
         <button class="btn" data-action="restart">RESTART</button>
         <button class="btn" data-action="mute">SOUND: ON</button>
         <button class="btn" data-action="music">MUSIC: ON</button>
+        <button class="btn fs-only" data-action="fullscreen">FULLSCREEN: OFF</button>
         <button class="btn" data-action="quit">QUIT TO TITLE</button>
       </div>
       <div class="owned" id="pause-owned"></div>
@@ -103,10 +132,15 @@
       <nav class="g-tabs" id="guide-tabs"></nav>
       <div class="g-body" id="guide-body"></div>
       <div class="g-nav">
-        <span class="hint">← → SWITCH TABS · ESC BACK</span>
+        <span class="hint kbd-only">← → SWITCH TABS · ESC BACK</span>
         <button class="btn small" id="guide-back">BACK</button>
       </div>
     </section>
+  </div>
+  <div id="rotate">
+    <div class="rotate-phone"></div>
+    <div class="rotate-title">ROTATE YOUR DEVICE</div>
+    <div class="rotate-sub">LAST LIGHT PLAYS IN LANDSCAPE</div>
   </div>
   <script type="module" src="js/main.js"></script>
 </body>

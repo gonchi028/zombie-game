@@ -114,6 +114,10 @@ export class KeyboardMouseController {
     this.input = input;
     this.label = 'KEYBOARD + MOUSE';
   }
+  // a click counts as using the keyboard + mouse, even without moving or shooting
+  touched() {
+    return this.input.mouse.pressed;
+  }
   read(player, game) {
     const i = this.input;
     const o = emptyIntent();
@@ -198,27 +202,80 @@ export class GamepadController {
   }
 }
 
-// Uses whichever of two controllers was touched most recently (e.g. keyboard OR gamepad for one player).
-export class HybridController {
-  constructor(primary, pad) {
-    this.primary = primary;
-    this.pad = pad;
-    this.usePad = false;
-  }
-  get label() {
-    return this.usePad ? this.pad.label : this.primary.label;
+// Phones and tablets: the on-screen sticks and buttons from touch.js. The aim stick also fires, with
+// a little aim assist since thumbs are less precise than a mouse.
+export class TouchController {
+  constructor(touch) {
+    this.touch = touch;
+    this.label = 'TOUCH';
+    this.lastAim = 0;
   }
   read(player, game) {
-    const a = this.primary.read(player, game);
-    const b = this.pad.read(player, game);
-    const padActive = b.mx || b.my || b.fire || b.dash || b.ability || b.flare || b.reload || b.swap;
-    const keyActive = a.mx || a.my || a.fire || a.dash || a.ability || a.flare || a.interact || a.reload || a.swap || this.primary.input.mouse.pressed;
-    if (padActive) this.usePad = true;
-    else if (keyActive) this.usePad = false;
-    const o = this.usePad ? b : a;
-    o.pause = o.pause || b.pause;
+    const t = this.touch;
+    const o = emptyIntent();
+    [o.mx, o.my] = stick(t.move.vx, t.move.vy);
+    const m = t.aim.mag;
+    if (m > 0.15) {
+      const a = Math.atan2(t.aim.vy, t.aim.vx);
+      const z = assistTarget(player, game, a);
+      this.lastAim = z ? Math.atan2(z.y - 4 - (player.y - 3), z.x - player.x) : a;
+      o.fire = m > 0.4;
+      o.aimDist = 40 + m * 100; // how far flares and grenades fly
+    } else if (o.mx || o.my) {
+      // thumb off the aim stick: face the nearest zombie, else where you walk (like a gamepad)
+      const z = nearestTarget(player, game, 150);
+      this.lastAim = z ? Math.atan2(z.y - 4 - (player.y - 3), z.x - player.x) : Math.atan2(o.my, o.mx);
+    }
+    o.aim = this.lastAim;
+    o.dash = t.hit('dash');
+    o.ability = t.hit('ability');
+    o.flare = t.hit('flare');
+    o.reload = t.hit('reload');
+    o.interact = o.reload; // the reload button turns into TAKE when a gun is in reach
+    o.swap = t.hit('swap') ? 1 : 0;
     return o;
   }
+}
+
+const isActive = (o) => o.mx || o.my || o.fire || o.dash || o.ability || o.flare || o.interact || o.reload || o.swap;
+
+// One player on several devices (keyboard + mouse, touch, gamepad): follows whichever was used last.
+export class HybridController {
+  constructor(...ctrls) {
+    this.ctrls = ctrls;
+    this.current = 0;
+  }
+  get label() {
+    return this.ctrls[this.current].label;
+  }
+  read(player, game) {
+    const intents = this.ctrls.map((c) => c.read(player, game));
+    intents.forEach((o, i) => {
+      if (isActive(o) || this.ctrls[i].touched?.()) this.current = i;
+    });
+    const o = intents[this.current];
+    o.pause = intents.some((x) => x.pause);
+    return o;
+  }
+}
+
+// The zombie closest to where the aim stick points (within ~20°), if there's a clear shot at it.
+function assistTarget(player, game, a) {
+  let best = null, bs = Infinity;
+  for (const z of game.zombies) {
+    if (z.dead) continue;
+    const dx = z.x - player.x, dy = z.y - player.y;
+    const d = Math.hypot(dx, dy);
+    if (d > 230) continue;
+    const off = Math.abs(Math.atan2(Math.sin(Math.atan2(dy, dx) - a), Math.cos(Math.atan2(dy, dx) - a)));
+    if (off > 0.35) continue;
+    const score = off * 200 + d; // mostly angle, then distance
+    if (score < bs && game.map.los(player.x, player.y - 3, z.x, z.y - 4)) {
+      bs = score;
+      best = z;
+    }
+  }
+  return best;
 }
 
 function nearestTarget(player, game, range) {

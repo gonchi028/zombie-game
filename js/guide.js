@@ -75,6 +75,15 @@ const CONTROLS = [
       [['B'], 'road flare', ['START'], 'pause'],
     ],
   },
+  {
+    title: 'TOUCH (PHONES AND TABLETS)',
+    rows: [
+      [['LEFT SIDE'], 'drag to move'],
+      [['RIGHT SIDE'], 'drag to aim, push further to shoot'],
+      ['Buttons by your right thumb: dash, ability, reload (TAKE when a gun is in reach), swap gun and road flare.'],
+      [['II'], 'pause'],
+    ],
+  },
 ];
 
 // 1-5 ratings for the weapon cards, derived from the real numbers in data.js.

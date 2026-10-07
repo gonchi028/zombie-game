@@ -46,6 +46,7 @@ export class UI {
     this.hudCache = new Map();
     this.padNavCd = 0;
     this.asleep = true; // the "press any key" splash in front of the title menu
+    this.touch = false; // phones and tablets: on-screen controls and tap-friendly hints (main.js)
     this.logoLit = false;
     document.querySelectorAll('[data-action]').forEach((b) => {
       b.addEventListener('click', () => {
@@ -144,7 +145,7 @@ export class UI {
       card.append(portrait, info);
       box.append(card);
     }
-    $('rec-hint').textContent = r.runs ? 'ESC BACK' : 'SURVIVE AS LONG AS YOU CAN. YOUR RECORDS SHOW UP HERE AFTER YOUR FIRST RUN.';
+    $('rec-hint').textContent = r.runs ? (this.touch ? '' : 'ESC BACK') : 'SURVIVE AS LONG AS YOU CAN. YOUR RECORDS SHOW UP HERE AFTER YOUR FIRST RUN.';
     this.showScreen('scr-records');
   }
 
@@ -160,6 +161,15 @@ export class UI {
     this.muted = muted;
     document.querySelectorAll('[data-action="mute"]').forEach((b) => (b.textContent = `SOUND: ${muted ? 'OFF' : 'ON'}`));
     this.renderAudioHint();
+  }
+
+  refreshFullscreen(on) {
+    document.body.classList.toggle('is-fullscreen', on);
+    document.querySelectorAll('.btn[data-action="fullscreen"]:not(.icon)').forEach((b) => (b.textContent = `FULLSCREEN: ${on ? 'ON' : 'OFF'}`));
+  }
+
+  showFullscreenTip() {
+    this.showScreen('scr-fstip');
   }
 
   refreshMusic(on) {
@@ -204,7 +214,7 @@ export class UI {
     $('select-title').textContent = mode === 2 ? `PLAYER ${p2 ? 2 : 1} — CHOOSE YOUR SURVIVOR` : 'CHOOSE YOUR SURVIVOR';
     $('select-title').style.color = mode === 2 ? PLAYER_COLORS[p2 ? 1 : 0] : '';
     $('select-hint').textContent = mode === 1
-      ? 'PRESS 1-4 OR CLICK TO PICK'
+      ? this.touch ? 'TAP A SURVIVOR TO PICK' : 'PRESS 1-4 OR CLICK TO PICK'
       : p2 ? 'P2 USES A GAMEPAD OR ARROW KEYS · BACK RETURNS TO PLAYER 1' : 'THEN PLAYER 2 PICKS FROM THE REST';
     // BACK on player 2's turn goes back to player 1's pick instead of the title
     this.selectBack = p2 ? () => this.showSelect(mode, onPick) : null;
@@ -590,7 +600,7 @@ export class UI {
       const cards = $(this.current).querySelectorAll('.card, .char-card');
       cards[n]?.click();
     } else if (code === 'Escape') {
-      if (this.current === 'scr-select' || this.current === 'scr-records') this.goBack();
+      if (['scr-select', 'scr-records', 'scr-fstip'].includes(this.current)) this.goBack();
       else if (this.current === 'scr-guide') {
         // consume it, or the pause handler would see ESC on the pause menu and resume the game
         e.stopImmediatePropagation();
@@ -620,7 +630,7 @@ export class UI {
       if (!dir && Math.abs(x) < 0.3 && Math.abs(y) < 0.3 && !input.padDown(i, 12) && !input.padDown(i, 13) && !input.padDown(i, 14) && !input.padDown(i, 15)) this.padNavCd = 0;
       if (input.padHit(i, 0)) document.activeElement?.click?.();
       if (input.padHit(i, 1)) {
-        if (this.current === 'scr-select' || this.current === 'scr-records') this.goBack();
+        if (['scr-select', 'scr-records', 'scr-fstip'].includes(this.current)) this.goBack();
         else if (this.current === 'scr-guide') this.closeGuide();
         else if (this.current === 'scr-pause') this.h.resume();
       }

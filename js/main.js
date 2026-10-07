@@ -1,6 +1,8 @@
 // Boot: bake sprites, wire UI <-> game, run the loop.
 import { buildAllSprites } from './sprites.js';
-import { Input, KeyboardMouseController, ArrowsController, GamepadController, HybridController } from './input.js';
+import { Input, KeyboardMouseController, ArrowsController, GamepadController, HybridController, TouchController } from './input.js';
+import { TouchControls } from './touch.js';
+import { fullscreenSupported, standalone, isFullscreen, toggleFullscreen, onFullscreenChange } from './fullscreen.js';
 import { Sfx } from './audio.js';
 import { Music } from './music.js';
 import { UI } from './ui.js';
@@ -15,12 +17,24 @@ const music = new Music(sfx);
 let game = null;
 
 function controllersFor(mode) {
-  if (mode === 1) return [new HybridController(new KeyboardMouseController(input), new GamepadController(input, 0))];
-  // Co-op: P1 on keyboard+mouse (or a 2nd gamepad), P2 on the first gamepad (or arrow keys).
-  return [
-    new HybridController(new KeyboardMouseController(input), new GamepadController(input, 1)),
-    new HybridController(new ArrowsController(input), new GamepadController(input, 0)),
-  ];
+  const p1 = (pad) => new HybridController(new KeyboardMouseController(input), new TouchController(touch), new GamepadController(input, pad));
+  if (mode === 1) return [p1(0)];
+  // Co-op: P1 on keyboard+mouse or touch (or a 2nd gamepad), P2 on the first gamepad (or arrow keys).
+  return [p1(1), new HybridController(new ArrowsController(input), new GamepadController(input, 0))];
+}
+
+// Touch mode shows the on-screen controls and touch-friendly hints. It starts on for phones and
+// tablets, turns on at the first touch, and off again when a real mouse moves.
+function setTouchMode(on) {
+  if (on === document.body.classList.contains('touch')) return;
+  document.body.classList.toggle('touch', on);
+  ui.touch = on;
+}
+
+// The fullscreen buttons toggle it where the browser can; on iPhones they explain the Home Screen route.
+function fullscreenButton() {
+  if (fullscreenSupported) toggleFullscreen();
+  else ui.showFullscreenTip();
 }
 
 function pause() {
@@ -50,6 +64,8 @@ const ui = new UI({
   wake: () => {
     sfx.init();
     game.powerOn();
+    // phones and tablets: the first tap also goes fullscreen, since browser bars eat a small screen
+    if (ui.touch && !isFullscreen()) toggleFullscreen();
   },
   back: () => ui.showTitle(game.best, sfx.muted),
   resume,
@@ -58,6 +74,7 @@ const ui = new UI({
     game.restart();
   },
   quit: toTitle,
+  fullscreen: fullscreenButton,
   mute: () => ui.refreshMute(sfx.toggleMute()),
   music: () => ui.refreshMusic(music.toggle()),
 });
@@ -67,9 +84,19 @@ function startRun(mode, chars) {
   game.newRun(mode, chars, controllersFor(mode));
 }
 
+const touch = new TouchControls({ pause, fullscreen: fullscreenButton });
 game = new Game({ canvas, ui, sfx, input });
 ui.refreshMusic(music.enabled);
 ui.showTitle(game.best, sfx.muted);
+
+setTouchMode(matchMedia('(pointer: coarse)').matches);
+window.addEventListener('pointerdown', (e) => e.pointerType === 'touch' && setTouchMode(true), true);
+window.addEventListener('pointermove', (e) => e.pointerType === 'mouse' && setTouchMode(false));
+// the game only plays in landscape, so turning a phone upright pauses it (a "rotate" notice covers it)
+matchMedia('(orientation: portrait)').addEventListener('change', (e) => e.matches && ui.touch && pause());
+document.body.classList.toggle('no-fullscreen', !fullscreenSupported);
+document.body.classList.toggle('standalone', standalone);
+onFullscreenChange((on) => ui.refreshFullscreen(on));
 
 // Browsers only allow audio after a user gesture.
 const unlock = () => sfx.init();
@@ -107,15 +134,19 @@ function frame(now) {
     music.update(dt, game);
     game.render();
     ui.pollGamepad(input, dt);
+    touch.setVisible(ui.touch && game.state === 'playing');
+    if (touch.visible && game.players[0]) touch.sync(game.players[0]);
   } catch (err) {
     // One bad frame should never freeze the game; report it once and keep going.
     if (!loggedError) console.error(err);
     loggedError = true;
   }
   input.endFrame();
+  touch.endFrame();
 }
 requestAnimationFrame(frame);
 
 // Handy for debugging from the console.
 window.__game = game;
 window.__music = music;
+window.__touch = touch;

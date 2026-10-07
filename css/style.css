@@ -13,6 +13,10 @@
   --pixel: 'Press Start 2P', monospace;
   --body: 'VT323', monospace;
 }
+/* phones: dvh is the height left over by the browser's own bars, so the game isn't cut off */
+@supports (height: 100dvh) {
+  :root { --s: calc(min(100vw, 177.7778dvh) / 480); }
+}
 
 * { box-sizing: border-box; }
 
@@ -30,6 +34,9 @@ body {
   font-family: var(--body);
   user-select: none;
   -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation; /* no double-tap zoom on menus */
 }
 
 #stage {
@@ -766,8 +773,140 @@ kbd {
 .g-frame.trade { border-color: #ff5a4e; color: #ff5a4e; background: repeating-linear-gradient(135deg, rgba(255, 90, 78, 0.15) 0 0.6em, transparent 0.6em 1.2em), #0e0c12; }
 
 /* controls */
-.g-controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6em; }
+.g-controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.6em; }
 .g-ctlcol .g-title { color: var(--weapon); margin-bottom: 0.5em; }
 .g-ctl { margin: 0.45em 0; font-size: 1.2em; line-height: 1.15; color: #d6ccb6; }
 .g-foot { margin-top: 0.8em; text-align: center; }
 
+
+/* ------------------------------------------------------------------ touch (phones and tablets) */
+body:not(.touch) .touch-only, body.touch .kbd-only { display: none; }
+/* fullscreen buttons: hidden when already launched from the Home Screen, or where the browser can't
+   do it (except the title one on touch devices, which explains the Home Screen route on iPhones) */
+body.no-fullscreen .fs-only, body.standalone .fs-only, body.standalone .fs-btn, body.no-fullscreen:not(.touch) .fs-btn { display: none; }
+.fs-icon { display: block; width: calc(var(--s) * 9); height: calc(var(--s) * 9); fill: currentColor; }
+.fs-exit, body.is-fullscreen .fs-enter { display: none; }
+body.is-fullscreen .fs-exit { display: inline; }
+.btn.icon { padding: 0.55em; }
+.fs-btn { position: absolute; top: 1em; right: 1.5em; }
+#scr-title.asleep .fs-btn { visibility: hidden; }
+.fs-tip { max-width: 30em; font-size: 1.5em; line-height: 1.15; color: #d6ccb6; text-align: left; }
+.fs-tip p { margin: 0 0 0.6em; }
+.fs-tip ol { margin: 0; padding-left: 1.4em; display: grid; gap: 0.35em; }
+.fs-tip b { color: #ffd98a; font-weight: normal; }
+/* keyboard letters on the HUD mean nothing on a touchscreen */
+body.touch .cd-key, body.touch .slot-key, body.touch #title-sound { display: none; }
+/* make room for the pause (and fullscreen) buttons in the top-left corner */
+body.touch .hud-top { left: 3.8em; }
+body.touch:not(.no-fullscreen):not(.standalone) .hud-top { left: 7.2em; }
+
+#touch { position: absolute; inset: 0; touch-action: none; }
+.tstick {
+  position: absolute;
+  width: calc(var(--s) * 68);
+  height: calc(var(--s) * 68);
+  margin: calc(var(--s) * -34) 0 0 calc(var(--s) * -34);
+  border-radius: 50%;
+  border: calc(var(--s) * 1) solid rgba(243, 230, 200, 0.22);
+  background: radial-gradient(circle, rgba(10, 9, 14, 0.1) 40%, rgba(10, 9, 14, 0.4));
+  opacity: 0.45;
+  pointer-events: none;
+}
+.tstick.active { opacity: 1; }
+.tknob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--s) * 26);
+  height: calc(var(--s) * 26);
+  margin: calc(var(--s) * -13) 0 0 calc(var(--s) * -13);
+  border-radius: 50%;
+  background: rgba(243, 230, 200, 0.28);
+  border: calc(var(--s) * 1) solid rgba(243, 230, 200, 0.55);
+}
+.ts-aim .tknob { background: rgba(255, 90, 78, 0.3); border-color: rgba(255, 120, 100, 0.7); }
+
+.tbtn {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(10, 9, 14, 0.55);
+  border: calc(var(--s) * 1) solid rgba(243, 230, 200, 0.35);
+  box-shadow: 0 calc(var(--s) * 2) 0 rgba(0, 0, 0, 0.55);
+}
+.tbtn.down { background: rgba(255, 217, 138, 0.28); border-color: #ffd98a; transform: translateY(calc(var(--s) * 1)); box-shadow: none; }
+.tart { display: grid; place-items: center; }
+/* not usable: nothing to throw (flare) or no second gun (swap) */
+.tbtn.off { border-color: rgba(243, 230, 200, 0.12); }
+.tbtn.off .tart { opacity: 0.3; filter: grayscale(1); }
+/* recharging: grey icon under a dark wedge that unwinds clockwise as it refills */
+.tcd { position: absolute; inset: 0; border-radius: 50%; display: none; background: conic-gradient(rgba(0, 0, 0, 0.6) var(--cd, 0%), rgba(255, 217, 138, 0.14) 0); }
+.tbtn.cooling { border-color: rgba(243, 230, 200, 0.12); }
+.tbtn.cooling .tcd { display: block; }
+.tbtn.cooling .tart { opacity: 0.35; filter: grayscale(1); }
+.tsecs { position: absolute; font-family: var(--pixel); font-size: 1em; color: var(--ink); text-shadow: 0 0.15em 0 #000, 0 0 0.3em #000; }
+/* ready again: a quick gold pop */
+.tbtn.ready { animation: t-ready 0.45s ease-out; }
+@keyframes t-ready {
+  0% { transform: scale(1.18); border-color: #ffd98a; box-shadow: 0 0 1.4em rgba(255, 217, 138, 0.8); }
+  100% { transform: scale(1); }
+}
+/* tapped while not ready */
+.tbtn.deny { animation: t-deny 0.3s linear; }
+@keyframes t-deny {
+  20%, 60% { translate: calc(var(--s) * -2) 0; }
+  40%, 80% { translate: calc(var(--s) * 2) 0; }
+}
+.tbadge {
+  position: absolute;
+  top: calc(var(--s) * -5);
+  right: calc(var(--s) * -6);
+  font-family: var(--pixel);
+  font-size: 0.4em;
+  font-weight: normal;
+  color: #120e14;
+  background: #ffd98a;
+  padding: 0.2em 0.35em;
+}
+.tbadge:empty { display: none; }
+.tb-reload.take { border-color: #ffd24a; animation: take-pulse 0.8s ease-in-out infinite alternate; }
+@keyframes take-pulse { to { box-shadow: 0 0 1em rgba(255, 210, 74, 0.7); } }
+#touch-pause, #touch-fs {
+  top: calc(var(--s) * 4);
+  width: calc(var(--s) * 20);
+  height: calc(var(--s) * 20);
+  border-radius: 0;
+  font-family: var(--pixel);
+  font-size: 0.8em;
+}
+#touch-pause { left: calc(var(--s) * 4); }
+#touch-fs { left: calc(var(--s) * 28); }
+
+/* the game only fits in landscape; upright phones get a notice instead */
+#rotate { display: none; }
+@media (orientation: portrait) {
+  body.touch #rotate {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5vw;
+    background: #030305;
+    text-align: center;
+    padding: 8vw;
+  }
+}
+.rotate-phone {
+  width: 14vw;
+  height: 24vw;
+  border: 1.5vw solid var(--ink);
+  border-radius: 2vw;
+  animation: rotate-hint 2.4s ease-in-out infinite;
+}
+@keyframes rotate-hint { 0%, 25% { transform: rotate(0); } 55%, 100% { transform: rotate(-90deg); } }
+.rotate-title { font-family: var(--pixel); font-size: 4.5vw; line-height: 1.4; color: #ffd98a; }
+.rotate-sub { font-size: 6vw; color: var(--muted); }

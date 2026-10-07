@@ -1746,7 +1746,7 @@ export class Game {
       const near = this.players.find((p) => p.nearDrop === w);
       if (near) {
         const label = near.ctrl.label || '';
-        const key = label === 'GAMEPAD' ? 'X' : label.startsWith('ARROWS') ? ';' : 'F';
+        const key = { GAMEPAD: 'X', TOUCH: 'TAKE' }[label] || (label.startsWith('ARROWS') ? ';' : 'F');
         drawText(g, `${key}: ${WEAPONS[w.id].short}`, x, y - 20, '#ffd24a', 'center');
       } else if (this.players.some((p) => p.alive && dist2(p.x, p.y, w.x, w.y) < 60 * 60)) {
         drawText(g, WEAPONS[w.id].short, x, y - 20, '#ffb84a', 'center');
