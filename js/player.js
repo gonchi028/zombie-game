@@ -15,7 +15,7 @@ function defaultStats() {
     pierce: 0, multishot: 0, crit: 0.05, ricochet: 0, ignite: 0, frost: 0, retaliation: 0,
     dashCdMul: 1, dashDmg: 0, abilityCdMul: 1, abilityRadius: 1, lifesteal: 0, knockMul: 1,
     explosive: 0, chain: 0, saws: 0, drones: 0, secondWind: 0, armor: 0, regen: 0,
-    pickupRadius: 22, dropMul: 1, berserk: 0, tracker: 0,
+    pickupRadius: 22, dropMul: 1, berserk: 0, tracker: 0, reviveMul: 1,
   };
 }
 
@@ -359,6 +359,12 @@ export class Player {
     const def = w.def;
     const st = this.stats;
     const mz = this.muzzle();
+    if (def.akimbo) {
+      // twin pistols: every other shot comes from the other hand
+      this.akimboSide = -(this.akimboSide || 1);
+      mz.x += -Math.sin(this.aim) * 2 * this.akimboSide;
+      mz.y += Math.cos(this.aim) * 2 * this.akimboSide;
+    }
     const n = def.pellets + st.multishot * (def.pellets > 1 ? 3 : 1);
     const spread = def.spread * st.spreadMul;
     const kind = def.projectile || 'bullet';

@@ -37,7 +37,7 @@ const TIPS = [
   'Dashing makes you briefly untouchable. Use it to slip through gaps in the horde.',
   'Walking over a gun picks it up if your slot is empty or it’s the same gun. A different gun needs a button press, and you drop the old one.',
   'When your found gun runs dry you switch back to your signature gun automatically.',
-  'In co-op, stand next to a downed friend to revive them before they bleed out.',
+  'In co-op, stand next to a downed friend to revive them before they bleed out. Mara does it twice as fast.',
   'Your flashlight follows your aim and walls block it. Glowing eyes give zombies away in the dark.',
 ];
 
@@ -115,6 +115,47 @@ function basicsTab() {
   for (const t of TIPS) tips.append(el('li', '', t));
   box.append(steps, el('h3', 'g-sub', 'SURVIVAL TIPS'), tips);
   return box;
+}
+
+function survivorsTab() {
+  const grid = el('div', 'g-grid g-survivors');
+  for (const c of Object.values(CHARACTERS)) {
+    const card = el('div', 'g-card g-survivor');
+    card.style.setProperty('--oc', c.color);
+    const head = el('div', 'g-shead');
+    const art = el('div', 'g-art');
+    art.append(pix(SPR.players[c.id].frames[0], 3));
+    const who = el('div', 'g-who');
+    who.append(el('div', 'g-title g-name', c.name), el('div', 'g-desc', c.title));
+    const bars = el('div', 'g-bars');
+    for (const [label, n] of [['HP', c.bars.hp], ['SPEED', c.bars.speed], ['POWER', c.bars.power]]) {
+      const row = el('div', 'g-bar');
+      row.append(el('span', '', label));
+      const seg = el('span', 'g-segs');
+      for (let i = 0; i < 5; i++) seg.append(el('i', i < n ? 'on' : ''));
+      row.append(seg);
+      bars.append(row);
+    }
+    who.append(bars);
+    head.append(art, who);
+    const kit = (img, title, desc) => {
+      const row = el('div', 'g-kit');
+      const ic = el('div', 'g-kit-icon');
+      ic.append(img);
+      const txt = el('div');
+      txt.append(el('div', 'g-title', title), el('div', 'g-desc', desc));
+      row.append(ic, txt);
+      return row;
+    };
+    card.append(
+      head,
+      kit(pix(SPR.guns[c.weapon].img, 1), WEAPONS[c.weapon].name, WEAPONS[c.weapon].desc),
+      kit(pix(icon(c.abilityIcon), 1), `${c.abilityName} · ${c.abilityCd}S`, c.abilityDesc),
+      el('div', 'g-desc g-perk', c.passive),
+    );
+    grid.append(card);
+  }
+  return grid;
 }
 
 function weaponsTab() {
@@ -209,6 +250,7 @@ function controlsTab() {
 
 export const GUIDE_TABS = [
   { id: 'basics', label: 'BASICS', build: basicsTab },
+  { id: 'survivors', label: 'SURVIVORS', build: survivorsTab },
   { id: 'weapons', label: 'WEAPONS', build: weaponsTab },
   { id: 'zombies', label: 'ZOMBIES', build: zombiesTab },
   { id: 'items', label: 'ITEMS', build: itemsTab },

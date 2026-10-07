@@ -244,6 +244,17 @@ export class Sfx {
         this._noise(t, 0.05, 0.4, 'highpass', 2500);
         this._tone(t + 0.06, 0.08, 0.2, 'square', 520, 780);
         break;
+      case 'nail':
+        this._tone(t, 0.05, 0.25, 'square', 900, 300);
+        this._noise(t, 0.05, 0.25, 'highpass', 3500);
+        break;
+      case 'heal':
+        [523, 784, 1047].forEach((f, i) => this._tone(t + i * 0.06, 0.25, 0.14, 'sine', f));
+        break;
+      case 'deploy':
+        this._noise(t, 0.1, 0.35, 'lowpass', 900);
+        [392, 523].forEach((f, i) => this._tone(t + 0.08 + i * 0.07, 0.1, 0.16, 'square', f));
+        break;
       case 'ping':
         this._tone(t, 0.25, 0.12, 'sine', 1180, 1150);
         break;

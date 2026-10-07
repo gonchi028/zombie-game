@@ -11,7 +11,7 @@ import { rollChoices } from './upgrades.js';
 import { SPR } from './sprites.js';
 import { drawText } from './font.js';
 import { MotionTracker } from './tracker.js';
-import { clamp, dist, dist2, rand, chance, choice, TAU, pixCircle, pixEllipse, storage, weightedPick } from './utils.js';
+import { clamp, dist, dist2, rand, chance, choice, TAU, pixCircle, pixEllipse, pixRing, storage, weightedPick } from './utils.js';
 
 const G = 420; // gravity for thrown things
 // Road flare: a held item that pulls nearby zombies off the players, then pops.
@@ -84,6 +84,7 @@ export class Game {
     this.enemyShots = [];
     this.throwables = [];
     this.weaponDrops = [];
+    this.turrets = [];
     this.dropT = FIRST_DROP;
     this.pools = [];
     this.pickups = [];
@@ -299,9 +300,9 @@ export class Game {
     });
   }
 
-  // Lob something toward where the player is aiming.
-  lob(p, kind, fuse) {
-    const range = clamp(p.aimDist || 90, 30, 140);
+  // Lob something toward where the player is aiming (or a fixed distance, if given).
+  lob(p, kind, fuse, dist = null) {
+    const range = dist ?? clamp(p.aimDist || 90, 30, 140);
     const tx = p.x + Math.cos(p.aim) * range, ty = p.y + Math.sin(p.aim) * range;
     const T = 0.55, z0 = 8;
     const t = {
@@ -314,7 +315,8 @@ export class Game {
   }
 
   useAbility(p) {
-    this.lob(p, p.char.ability, 1.15);
+    // the med station drops at your feet so it heals you straight away; everything else is thrown
+    this.lob(p, p.char.ability, 1.15, p.char.ability === 'medstation' ? 10 : null);
   }
 
   throwFlare(p) {
@@ -743,6 +745,7 @@ export class Game {
     this.updateBullets(dt);
     this.updateEnemyShots(dt);
     this.updateThrowables(dt);
+    this.updateTurrets(dt);
     this.updatePools(dt);
     this.updatePickups(dt);
     this.updateWeaponDrops(dt);
@@ -849,7 +852,7 @@ export class Game {
       if (p.state !== 'downed') continue;
       const helper = this.players.find((o) => o.alive && dist2(o.x, o.y, p.x, p.y) < 22 * 22);
       if (helper) {
-        p.revive += dt / 2.2;
+        p.revive += (dt / 2.2) * helper.stats.reviveMul;
         if (p.revive >= 1) {
           p.reviveNow(0.4);
           this.particles.text(p.x, p.y - 20, 'REVIVED!', '#8aff8a', 1.2);
@@ -999,6 +1002,8 @@ export class Game {
       if (t.kind === 'molotov') {
         if (Math.random() < dt * 40) this.particles.fire(t.x, t.y - t.z, 1, 10);
         if (t.z <= 0 || hitWall) this.shatterMolotov(t);
+      } else if (t.kind === 'medstation' || t.kind === 'turret') {
+        if (t.z <= 0) this.deploy(t);
       } else {
         if (t.z <= 0) {
           t.z = 0;
@@ -1059,6 +1064,82 @@ export class Game {
     }
   }
 
+  // Mara's med station and Ivy's turret set up where they land.
+  deploy(t) {
+    t.dead = true;
+    const o = t.owner;
+    if (t.kind === 'medstation') {
+      const r = Math.round(30 * o.stats.abilityRadius);
+      this.pools.push({ kind: 'heal', x: t.x, y: t.y, r, t: 7, life: 7, hps: 12, owner: o });
+      this.particles.ring(t.x, t.y, r, '#5ee0b0', 0.5);
+      this.addFlash(t.x, t.y, r * 2, 0.3, '#5ee0b0');
+      this.sound('heal', t.x, t.y);
+    } else {
+      this.turrets.push({
+        x: t.x, y: t.y, t: 0, life: 10, cd: 0.4, aim: o.aim, kick: 0, range: 150 * o.stats.abilityRadius, owner: o,
+      });
+      this.particles.dust(t.x, t.y + 2, 6, 6);
+      this.sound('deploy', t.x, t.y);
+    }
+  }
+
+  // Sentry turrets: shoot the nearest zombie they can see, then fold up when their time runs out.
+  updateTurrets(dt) {
+    for (const tu of this.turrets) {
+      tu.t += dt;
+      tu.cd -= dt;
+      tu.kick = Math.max(0, tu.kick - dt * 30);
+      if (tu.t >= tu.life) {
+        tu.dead = true;
+        this.particles.smoke(tu.x, tu.y - 4, 4);
+        this.sound('reload', tu.x, tu.y, 0.6);
+        continue;
+      }
+      if (tu.cd > 0) continue;
+      const gx = tu.x, gy = tu.y - 6;
+      let best = null, bd = tu.range * tu.range;
+      for (const z of this.zombiesNear(gx, gy, tu.range)) {
+        if (z.dead) continue;
+        const d = dist2(gx, gy, z.x, z.y - z.bodyOff);
+        if (d < bd && this.map.los(gx, gy, z.x, z.y - z.bodyOff)) {
+          bd = d;
+          best = z;
+        }
+      }
+      if (!best) {
+        tu.cd = 0.15;
+        continue;
+      }
+      tu.aim = Math.atan2(best.y - best.bodyOff - gy, best.x - gx);
+      const mx = gx + Math.cos(tu.aim) * 7, my = gy + Math.sin(tu.aim) * 7;
+      this.addBullet({
+        x: mx, y: my, a: tu.aim + rand(-0.05, 0.05), speed: 440, dmg: 9 * tu.owner.dmgMul(), range: tu.range + 20,
+        pierce: 0, ricochet: 0, knock: 25, owner: tu.owner, kind: 'bullet', noProc: true,
+      });
+      this.particles.muzzle(mx, my, tu.aim, 0.6);
+      this.addFlash(mx, my, 34, 0.05, '#ffc86a');
+      this.sound('smg', tu.x, tu.y, 0.3);
+      tu.kick = 2;
+      tu.cd = 0.16;
+    }
+    this.turrets = this.turrets.filter((tu) => !tu.dead);
+  }
+
+  drawTurrets(g, cx, cy) {
+    for (const tu of this.turrets) {
+      if (tu.life - tu.t < 2 && Math.floor(tu.t * 8) % 2 === 0) continue; // blink before folding up
+      const x = Math.round(tu.x - cx), y = Math.round(tu.y - cy);
+      pixEllipse(g, x, y + 1, 5, 2, 'rgba(0,0,0,0.45)');
+      g.drawImage(SPR.turretBase, x - 4, y - 4);
+      g.save();
+      g.translate(x, y - 6);
+      g.rotate(tu.aim);
+      if (Math.cos(tu.aim) < 0) g.scale(1, -1);
+      g.drawImage(SPR.turretGun, -3 - Math.round(tu.kick), -2);
+      g.restore();
+    }
+  }
+
   shatterMolotov(t) {
     t.dead = true;
     const st = t.owner.stats;
@@ -1074,7 +1155,17 @@ export class Game {
   updatePools(dt) {
     for (const pool of this.pools) {
       pool.t -= dt;
-      if (pool.kind === 'fire') {
+      if (pool.kind === 'heal') {
+        if (Math.random() < dt * 10) {
+          this.particles.add({
+            type: 'spark', x: pool.x + rand(-pool.r, pool.r) * 0.7, y: pool.y + rand(-pool.r, pool.r) * 0.4, vy: -18, drag: 1,
+            life: 0.7, color: '#8affc8', add: true,
+          });
+        }
+        for (const p of this.players) {
+          if (p.alive && dist2(p.x, p.y, pool.x, pool.y) < pool.r * pool.r) p.heal(pool.hps * dt);
+        }
+      } else if (pool.kind === 'fire') {
         const n = pool.r * dt * 1.6;
         for (let i = 0; i < n; i++) {
           const a = rand(0, TAU), d = Math.sqrt(Math.random()) * pool.r;
@@ -1226,6 +1317,7 @@ export class Game {
     for (const e of ents) e.draw(g, cx, cy);
 
     this.drawCompanions(g, cx, cy);
+    this.drawTurrets(g, cx, cy);
     this.drawThrowables(g, cx, cy);
     this.particles.draw(g, cx, cy);
 
@@ -1252,6 +1344,14 @@ export class Game {
         g.globalAlpha = 0.5 * fade;
         pixEllipse(g, x, y, p.r, Math.round(p.r * 0.7), '#2a0e04');
         g.globalAlpha = 1;
+      } else if (p.kind === 'heal') {
+        // a pulsing ring around the med station
+        g.globalAlpha = 0.18 * fade;
+        pixEllipse(g, x, y, p.r, Math.round(p.r * 0.6), '#5ee0b0');
+        g.globalAlpha = (0.45 + 0.25 * Math.sin(this.time * 5)) * fade;
+        pixRing(g, x, y, p.r, '#8affc8');
+        g.globalAlpha = 1;
+        g.drawImage(SPR.medstation, Math.round(x) - 4, Math.round(y) - 5);
       } else {
         g.globalAlpha = 0.6 * fade;
         pixEllipse(g, x, y, p.r, Math.round(p.r * 0.6), '#3f6a14');
@@ -1313,7 +1413,7 @@ export class Game {
   drawThrowables(g, cx, cy) {
     for (const t of this.throwables) {
       pixEllipse(g, t.x - cx, t.y - cy + 1, 2, 1, 'rgba(0,0,0,0.4)');
-      const img = t.kind === 'molotov' ? SPR.molotov : t.kind === 'flare' ? SPR.flare : t.kind === 'shell' ? SPR.shell : SPR.grenade;
+      const img = { molotov: SPR.molotov, flare: SPR.flare, shell: SPR.shell, medstation: SPR.medstation, turret: SPR.turretBase }[t.kind] || SPR.grenade;
       g.save();
       g.translate(Math.round(t.x - cx), Math.round(t.y - t.z - cy));
       g.rotate(Math.floor(t.spin) * 0.8);
@@ -1351,6 +1451,13 @@ export class Game {
         g.globalAlpha = 0.9 - k * 0.5;
         pixCircle(g, x, y, Math.round(1 + k * 3), k < 0.25 ? '#fff3b0' : k < 0.55 ? '#ffb02a' : k < 0.8 ? '#ff5a1a' : '#a8200a');
         g.globalAlpha = 1;
+        continue;
+      }
+      if (b.kind === 'nail') {
+        g.fillStyle = '#8a93a3';
+        for (let i = 1; i <= 3; i++) g.fillRect(Math.round(x - ux * i), Math.round(y - uy * i), 1, 1);
+        g.fillStyle = '#e8eef0';
+        g.fillRect(Math.round(x), Math.round(y), 1, 1);
         continue;
       }
       if (b.kind === 'sniper') {
@@ -1437,6 +1544,9 @@ export class Game {
         const fl = 0.85 + rand(-0.08, 0.08);
         lights.push({ x, y, r: pool.r * 2.3 * fl, intensity: 0.85 * k });
         glows.push({ x, y, r: pool.r * 1.7 * fl, color: '#ff7a2a', alpha: 0.35 * k });
+      } else if (pool.kind === 'heal') {
+        lights.push({ x, y, r: pool.r * 1.8, intensity: 0.6 * k });
+        glows.push({ x, y, r: pool.r * 1.2, color: '#5ee0b0', alpha: 0.25 * k });
       } else glows.push({ x, y, r: pool.r * 1.4, color: '#8aff4a', alpha: 0.18 * k });
     }
     for (const z of this.zombies) {

@@ -12,11 +12,17 @@ dependencies. Open it in a browser and play.
 <table>
   <tr>
     <td><img src="docs/screenshots/title.png" alt="Title screen" /></td>
+    <td><img src="docs/screenshots/select.png" alt="Character select with four survivors" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Title screen</sub></td>
+    <td align="center"><sub>Four survivors to choose from</sub></td>
+  </tr>
+  <tr>
     <td><img src="docs/screenshots/upgrades.png" alt="Upgrade cards between waves" /></td>
     <td><img src="docs/screenshots/guide.png" alt="The in-game How to Play guide" /></td>
   </tr>
   <tr>
-    <td align="center"><sub>Title screen</sub></td>
     <td align="center"><sub>Pick an upgrade after each wave</sub></td>
     <td align="center"><sub>Built-in How to Play guide</sub></td>
   </tr>
@@ -36,8 +42,8 @@ dependencies. Open it in a browser and play.
 
 ## Features
 
-- **Two survivors, two playstyles.** Each has a signature gun that never runs out of ammo, a
-  throwable ability and a passive perk.
+- **Four survivors, four playstyles.** A scout, a brawler, a medic and an engineer. Each has a
+  signature gun that never runs out of ammo, a unique ability and a passive perk.
 - **Guns spawn around the city.** Find 9 weapons, from SMGs and shotguns to a flamethrower, Tesla
   gun and minigun. Stronger guns turn up in later waves.
 - **Waves that escalate.** Seven zombie types, including the Abomination, a boss that charges,
@@ -50,7 +56,7 @@ dependencies. Open it in a browser and play.
 - **Juicy animation.** Characters squash, stretch, lean and bob. Zombies flinch from hits and
   ragdoll across the street when they die.
 - **Solo or local co-op**, with revives. Keyboard + mouse, arrow keys with auto-aim, or gamepads.
-- **A built-in How to Play guide** covering every weapon, zombie, pickup and control.
+- **A built-in How to Play guide** covering every survivor, weapon, zombie, pickup and control.
 
 ## Quick start
 
@@ -86,13 +92,16 @@ Everything you need is also in the **How to Play** screen, on the title menu and
 
 ### Survivors
 
-| | Red, the Scout | Bruno, the Brawler |
-| --- | --- | --- |
-| Health | 100 | 150 |
-| Speed | Fast | Slow |
-| Signature gun | **Scout Carbine**: accurate and quick | **Sawed-Off**: two barrels, huge knockback |
-| Ability | **Frag Grenade** (7s cooldown): a bouncing grenade | **Molotov** (9s cooldown): leaves a burning pool |
-| Passive | +20% reload speed, faster dash | Takes 15% less damage, extra knockback |
+| | Red, the Scout | Bruno, the Brawler | Mara, the Medic | Ivy, the Engineer |
+| --- | --- | --- | --- | --- |
+| Health | 100 | 150 | 110 | 100 |
+| Speed | Fast | Slow | Average | Average |
+| Signature gun | **Scout Carbine**: accurate and quick | **Sawed-Off**: two barrels, huge knockback | **Twin Pistols**: fast shots from alternating hands | **Nail Gun**: nails pierce 2 zombies |
+| Ability | **Frag Grenade** (7s): a bouncing grenade | **Molotov** (9s): leaves a burning pool | **Med Station** (12s): drops at her feet and heals everyone standing in it | **Sentry Turret** (14s): shoots nearby zombies for 10 seconds |
+| Passive | +20% reload speed, faster dash | Takes 15% less damage, extra knockback | Revives teammates 2× faster, regenerates 1 HP/s | Found guns carry 50% more ammo |
+
+Red outruns the horde, and Bruno can take a beating and hits hardest up close. Mara keeps a team
+alive and shines in co-op. Ivy turns any street corner into a defensive position.
 
 ### Weapons
 
@@ -111,6 +120,8 @@ You carry two guns. **Slot 1** is your survivor's signature gun, with unlimited 
 | --- | --- | --- | --- | --- | --- |
 | Scout Carbine | 15 | 6.5/s | 24 / ∞ | Red's signature | Accurate, quick reload |
 | Sawed-Off | 7 × 11 | 3.2/s | 2 / ∞ | Bruno's signature | Huge knockback, short range |
+| Twin Pistols | 10 | 8/s | 24 / ∞ | Mara's signature | Shots alternate between hands |
+| Nail Gun | 12 | 5.5/s | 30 / ∞ | Ivy's signature | Nails pierce 2 zombies |
 | Assault Rifle | 13 | 9/s | 30 / 210 | Wave 1 | Steady full-auto all-rounder |
 | Shotgun | 7 × 10 | 1.4/s | 6 / 42 | Wave 1 | Wrecks anything close |
 | SMG | 8 | 15/s | 40 / 280 | Wave 1 | Light hits, huge volume |
@@ -205,12 +216,13 @@ big upside for a real downside.
 
 ### Co-op
 
-Pick **2 Players** on the title screen. Player 1 chooses a survivor and player 2 gets the other.
+Pick **2 Players** on the title screen. Player 1 chooses a survivor, then player 2 chooses from the
+other three.
 
 - Player 1 uses keyboard + mouse. Player 2 uses the first gamepad, or the arrow keys with auto-aim.
   With two gamepads, player 1 can use the second one.
 - When a survivor goes down, they have 30 seconds to be revived. Stand next to them for about 2
-  seconds to bring them back.
+  seconds to bring them back, or 1 second if you're Mara.
 - The run ends when nobody is left standing. Survivors who bled out rejoin at the start of the next
   wave.
 
@@ -291,6 +303,12 @@ js/
 - **New gun.** Add an entry to `WEAPONS` in `js/data.js`, with a `tier` (1–3) so it can drop and a
   `desc` for the guide. Draw it in `GUN_ART` in `js/sprites.js`. It shows up in drops, the HUD and
   the How to Play guide automatically.
+- **New survivor.** Add an entry to `CHARACTERS` in `js/data.js` with stats, a signature gun, an
+  ability and the `abilityIcon` shown on the HUD. Draw a head, a body and a palette in
+  `js/sprites.js` and register them in `SPR.players`. Character select and the guide pick it up
+  automatically. A brand-new ability also needs code in `useAbility()` in `js/game.js`. Thrown
+  abilities that set something up where they land, like the med station and turret, go through
+  `deploy()`.
 - **New upgrade.** Add an entry to `UPGRADES` in `js/upgrades.js` with an `apply(player)` function,
   and an optional `cond(player)` to control when it can be offered. Add its id to a `CATEGORY` list
   to give the card its color.

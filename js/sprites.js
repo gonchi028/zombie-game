@@ -92,6 +92,34 @@ const HEAD_BRUNO = [
 ];
 const BODY_BRUNO = ['.oBBBBBBBBo.', '.oBBBbbBBBo.', '.oSBBBBBBSo.', '..oPPPPPPo..'];
 
+// Mara: dark hair up in a bun, white coat over teal scrubs, red cross on the chest
+const HEAD_MARA = [
+  '....oooo....',
+  '...oHHHHo...',
+  '..oHHHHHHo..',
+  '.oHHHHHHHHo.',
+  '.oHSSSSSSHo.',
+  '.oHSESSESHo.',
+  '.oHSSSSSSHo.',
+  '..oSSssSSo..',
+  '...oooooo...',
+];
+const BODY_MARA = ['.oWWBBBBWWo.', '.oWWBrrBWWo.', '.oSWWWWWWSo.', '..oPPPPPPo..'];
+
+// Ivy: yellow hard hat, black ponytail out the back, hi-vis vest
+const HEAD_IVY = [
+  '...oooooo...',
+  '..oYYYYYYo..',
+  '.oYYYYYYYYo.',
+  'oyyyyyyyyyyo',
+  '.oKSSSSSSKo.',
+  '.oKSESSESKoo',
+  '.oKSSSSSSKKo',
+  '..oSSSSSSoKo',
+  '...oooooo.oo',
+];
+const BODY_IVY = ['..oOOOOOOo..', '.oOwwwwwwOo.', '.oSOOOOOOSo.', '..oPPPPPPo..'];
+
 const HEAD_ZOMBIE = [
   '...oooooo...',
   '..oSHSSHSo..',
@@ -112,6 +140,15 @@ const PAL_RED = {
 const PAL_BRUNO = {
   o: O, T: '#2a2b33', V: '#4b4f60', S: '#d6a07a', s: '#b67f5e', E: '#1b1b26', M: '#3b2618',
   B: '#34475f', b: '#26344a', P: '#2a2a2e', F: '#191517',
+};
+
+const PAL_MARA = {
+  o: O, H: '#3a2418', S: '#e8b48c', s: '#c98f6a', E: '#1b1b26',
+  W: '#e8eef0', B: '#3fa58e', r: '#d83a3a', P: '#2f5560', F: '#191517',
+};
+const PAL_IVY = {
+  o: O, Y: '#f2c14e', y: '#b8862b', K: '#1a1418', S: '#c98a62', E: '#1b1b26',
+  O: '#e8702a', w: '#f0e8a0', P: '#3a3e4a', F: '#191517',
 };
 
 function humanoid(head, body, pal) {
@@ -235,6 +272,29 @@ const GUN_PAL = {
   b: '#4fb2ff', c: '#c8f0ff', f: '#ff8a2a',
 };
 export const GUN_ART = {
+  twinpistols: {
+    rows: [
+      'oooooooo..',
+      'oGGGGGGo..',
+      'oggoooooo.',
+      'ogoGGGGGGo',
+      'oooggooooo',
+      '..ogo.....',
+      '..ooo.....',
+    ],
+    pivot: [2, 3],
+  },
+  nailgun: {
+    rows: [
+      '.ooooooooo..',
+      'oyyyyyyGGooo',
+      'oyyyyyyGGGko',
+      'oooyyoooooo.',
+      '..oyyo......',
+      '..oooo......',
+    ],
+    pivot: [3, 3],
+  },
   carbine: {
     rows: [
       '....oo.......',
@@ -406,6 +466,13 @@ const PICKUPS = {
 const GRENADE = { rows: ['.oo.', 'oeeo', 'oEeo', '.oo.'], pal: { o: O, e: '#5f7a34', E: '#8aa84a' } };
 const MOLOTOV = { rows: ['.f.', 'ow.', 'ogo', 'ogo', 'ooo'], pal: { o: O, f: '#ffb02a', w: '#d8c8a0', g: '#3d7a3a' } };
 const ROCKET = { rows: ['ooo...', 'oyeeeo', 'ooo...'], pal: { o: O, y: '#ff9a3a', e: '#6a7a3a' } };
+const MEDSTATION = {
+  rows: ['.oooooo.', 'owwwwwwo', 'owwrrwwo', 'owrrrrwo', 'owwrrwwo', 'oggggggo', '.oooooo.'],
+  pal: { o: O, w: '#eeeae0', r: '#d83a3a', g: '#3fa58e' },
+};
+// sentry turret: a tripod base and a separately drawn gun that turns to aim
+const TURRET_BASE = { rows: ['..oooo..', '.oGGGGo.', '.ogggGo.', 'oo.oo.oo', 'o..oo..o'], pal: { o: O, G: '#8a93a3', g: '#4a505c' } };
+const TURRET_GUN = { rows: ['ooooooooo', 'oyyGGGGGo', 'oyyggoooo', 'oooo.....'], pal: { o: O, G: '#8a93a3', g: '#4a505c', y: '#f2c14e' } };
 const SHELL = { rows: ['.oo.', 'oyeo', 'oeeo', '.oo.'], pal: { o: O, e: '#556b2f', y: '#d9b43a' } };
 const FLARE = { rows: ['ooooo.', 'orRrwy', 'ooooo.'], pal: { o: O, r: '#d8342a', R: '#8e1c18', w: '#fff0c8', y: '#ffd24a' } };
 const DRONE = {
@@ -425,6 +492,8 @@ export function buildAllSprites() {
   SPR.players = {
     red: makeSet(humanoid(HEAD_RED, BODY_RED, PAL_RED), { head: buildSprite(HEAD_RED, PAL_RED) }),
     bruno: makeSet(humanoid(HEAD_BRUNO, BODY_BRUNO, PAL_BRUNO), { head: buildSprite(HEAD_BRUNO, PAL_BRUNO) }),
+    mara: makeSet(humanoid(HEAD_MARA, BODY_MARA, PAL_MARA), { head: buildSprite(HEAD_MARA, PAL_MARA) }),
+    ivy: makeSet(humanoid(HEAD_IVY, BODY_IVY, PAL_IVY), { head: buildSprite(HEAD_IVY, PAL_IVY) }),
   };
   for (const p of Object.values(SPR.players)) {
     p.downed = rotate90(p.frames[0], -1);
@@ -484,6 +553,9 @@ export function buildAllSprites() {
   SPR.rocket = buildSprite(ROCKET.rows, ROCKET.pal);
   SPR.flare = buildSprite(FLARE.rows, FLARE.pal);
   SPR.shell = buildSprite(SHELL.rows, SHELL.pal);
+  SPR.medstation = buildSprite(MEDSTATION.rows, MEDSTATION.pal);
+  SPR.turretBase = buildSprite(TURRET_BASE.rows, TURRET_BASE.pal);
+  SPR.turretGun = buildSprite(TURRET_GUN.rows, TURRET_GUN.pal);
   SPR.drone = buildSprite(DRONE.rows, DRONE.pal);
   SPR.saw = buildSprite(SAW.rows, SAW.pal);
 }

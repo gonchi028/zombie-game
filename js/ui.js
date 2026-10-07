@@ -42,7 +42,8 @@ export class UI {
     document.querySelectorAll('[data-action]').forEach((b) => {
       b.addEventListener('click', () => {
         this.h.click?.();
-        this.h[b.dataset.action]?.();
+        if (b.dataset.action === 'back') this.goBack();
+        else this.h[b.dataset.action]?.();
       });
     });
     document.addEventListener('mouseover', (e) => {
@@ -112,19 +113,28 @@ export class UI {
     else this.h.back();
   }
 
-  showSelect(mode, onPick) {
-    $('select-title').textContent = mode === 2 ? 'PLAYER 1 — CHOOSE YOUR SURVIVOR' : 'CHOOSE YOUR SURVIVOR';
-    $('select-hint').textContent = mode === 2
-      ? 'PLAYER 2 TAKES THE OTHER SURVIVOR · P2 USES A GAMEPAD OR ARROW KEYS'
-      : 'PRESS 1 / 2 OR CLICK TO PICK';
+  // Solo: pick one survivor. Co-op: player 1 picks, then player 2 picks from the ones left.
+  showSelect(mode, onPick, taken = null) {
+    const p2 = mode === 2 && taken;
+    $('select-title').textContent = mode === 2 ? `PLAYER ${p2 ? 2 : 1} — CHOOSE YOUR SURVIVOR` : 'CHOOSE YOUR SURVIVOR';
+    $('select-title').style.color = mode === 2 ? PLAYER_COLORS[p2 ? 1 : 0] : '';
+    $('select-hint').textContent = mode === 1
+      ? 'PRESS 1-4 OR CLICK TO PICK'
+      : p2 ? 'P2 USES A GAMEPAD OR ARROW KEYS · BACK RETURNS TO PLAYER 1' : 'THEN PLAYER 2 PICKS FROM THE REST';
+    // BACK on player 2's turn goes back to player 1's pick instead of the title
+    this.selectBack = p2 ? () => this.showSelect(mode, onPick) : null;
     const row = $('char-row');
     row.innerHTML = '';
     Object.values(CHARACTERS).forEach((c, i) => {
       const card = el('button', 'char-card');
       card.style.setProperty('--cc', c.color);
+      if (c.id === taken) {
+        card.disabled = true;
+        card.append(el('span', 'char-taken', 'P1'));
+      }
       const portrait = el('div', 'char-portrait');
-      portrait.append(pix(SPR.players[c.id].frames[0], 5));
-      const gun = pix(SPR.guns[c.weapon].img, 3, 'char-gun');
+      portrait.append(pix(SPR.players[c.id].frames[0], 4));
+      const gun = pix(SPR.guns[c.weapon].img, 2, 'char-gun');
       portrait.append(gun);
       const info = el('div', 'char-info');
       info.append(el('div', 'char-name', c.name), el('div', 'char-title', c.title));
@@ -140,9 +150,9 @@ export class UI {
       info.append(bars);
       const details = el('div', 'char-details');
       details.append(
-        el('div', 'kv', `SIGNATURE GUN · ${WEAPONS[c.weapon].name}`),
+        el('div', 'kv', WEAPONS[c.weapon].name),
         el('div', 'desc', WEAPONS[c.weapon].desc),
-        el('div', 'kv', `ABILITY · ${c.abilityName}`),
+        el('div', 'kv', c.abilityName),
         el('div', 'desc', c.abilityDesc),
         el('div', 'desc passive', c.passive),
       );
@@ -150,14 +160,22 @@ export class UI {
       card.append(el('span', 'key', String(i + 1)), portrait, info);
       card.addEventListener('click', () => {
         this.h.click?.();
-        const ids = Object.keys(CHARACTERS);
-        const chars = mode === 2 ? [c.id, ids.find((x) => x !== c.id)] : [c.id];
+        if (mode === 2 && !taken) {
+          this.showSelect(mode, onPick, c.id);
+          return;
+        }
         this.showScreen(null);
-        onPick(mode, chars);
+        onPick(mode, taken ? [taken, c.id] : [c.id]);
       });
       row.append(card);
     });
     this.showScreen('scr-select');
+    row.querySelector('.char-card:not([disabled])').focus({ preventScroll: true });
+  }
+
+  goBack() {
+    if (this.current === 'scr-select' && this.selectBack) this.selectBack();
+    else this.h.back();
   }
 
   showUpgrade(player, choices, wave, rerolls, onPick, onReroll) {
@@ -302,7 +320,7 @@ export class UI {
       wpn.append(mag, count);
       const cds = el('div', 'pp-cds');
       const ab = el('div', 'cd');
-      ab.append(pix(icon(p.char.ability === 'grenade' ? 'bomb' : 'flame'), 2));
+      ab.append(pix(icon(p.char.abilityIcon), 2));
       const abFill = el('i');
       ab.append(abFill, el('span', 'cd-key', 'Q'));
       const da = el('div', 'cd');
@@ -471,12 +489,12 @@ export class UI {
     } else if (['ArrowUp', 'ArrowLeft', 'KeyW', 'KeyA'].includes(code)) {
       e.preventDefault();
       this.moveFocus(-1);
-    } else if (/^Digit[1-3]$/.test(code)) {
+    } else if (/^Digit[1-4]$/.test(code)) {
       const n = Number(code.slice(5)) - 1;
       const cards = $(this.current).querySelectorAll('.card, .char-card');
       cards[n]?.click();
     } else if (code === 'Escape') {
-      if (this.current === 'scr-select') this.h.back();
+      if (this.current === 'scr-select') this.goBack();
       else if (this.current === 'scr-guide') {
         // consume it, or the pause handler would see ESC on the pause menu and resume the game
         e.stopImmediatePropagation();
@@ -502,7 +520,7 @@ export class UI {
       if (!dir && Math.abs(x) < 0.3 && Math.abs(y) < 0.3 && !input.padDown(i, 12) && !input.padDown(i, 13) && !input.padDown(i, 14) && !input.padDown(i, 15)) this.padNavCd = 0;
       if (input.padHit(i, 0)) document.activeElement?.click?.();
       if (input.padHit(i, 1)) {
-        if (this.current === 'scr-select') this.h.back();
+        if (this.current === 'scr-select') this.goBack();
         else if (this.current === 'scr-guide') this.closeGuide();
         else if (this.current === 'scr-pause') this.h.resume();
       }
