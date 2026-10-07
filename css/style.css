@@ -100,16 +100,39 @@ h3 { font-family: var(--pixel); font-weight: normal; font-size: 0.7em; line-heig
   text-shadow: 0 0.1em 0 #000;
 }
 .logo-last { color: var(--ink); }
+/* LIGHT is wired to the city's power grid: game.js turns it off with the street lamps (no fade, it snaps) */
 .logo-light {
   color: #ffd98a;
   text-shadow: 0 0.1em 0 #000, 0 0 0.35em rgba(255, 200, 100, 0.8), 0 0 1em rgba(255, 170, 60, 0.5);
-  animation: flicker 5s infinite;
 }
+.logo-light.off { color: #4a3b2a; text-shadow: 0 0.1em 0 #000; }
 @keyframes flicker {
   0%, 18%, 22%, 62%, 64%, 100% { opacity: 1; }
   20%, 63% { opacity: 0.35; }
 }
 .tagline { font-size: 1.6em; color: #c9bda3; letter-spacing: 0.1em; margin-bottom: 0.8em; }
+/* splash: logo and tagline only, until the first key / click / button press */
+.press-start {
+  display: none;
+  position: absolute;
+  top: 62%;
+  font-family: var(--pixel);
+  font-size: 0.9em;
+  letter-spacing: 0.15em;
+  color: var(--ink);
+  text-shadow: 0 0.2em 0 #000;
+  animation: blink 1.2s steps(1) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+#scr-title.asleep .press-start { display: block; }
+#scr-title.asleep .menu, #scr-title.asleep .title-foot { visibility: hidden; }
+#scr-title.waking .menu .btn { animation: menu-in 0.35s ease-out backwards; }
+#scr-title.waking .menu .btn:nth-child(1) { animation-delay: 0.45s; }
+#scr-title.waking .menu .btn:nth-child(2) { animation-delay: 0.53s; }
+#scr-title.waking .menu .btn:nth-child(3) { animation-delay: 0.61s; }
+#scr-title.waking .menu .btn:nth-child(4) { animation-delay: 0.69s; }
+#scr-title.waking .title-foot { animation: fade-in 0.5s 0.8s ease-out backwards; }
+@keyframes menu-in { from { opacity: 0; transform: translateY(0.8em); } }
 .title-foot {
   position: absolute;
   bottom: 1em;
@@ -401,6 +424,53 @@ kbd {
 .best { font-family: var(--pixel); font-size: 0.6em; color: var(--muted); margin-top: 0.6em; }
 .best.new { color: #ffd24a; animation: flicker 1.2s infinite; }
 
+/* ------------------------------------------------------------------ records */
+.rec-tiles, .rec-survivors { display: grid; grid-template-columns: repeat(4, 13.5em); gap: 0.5em; }
+.rec-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7em;
+  padding: 0.8em 0.6em;
+  background: rgba(20, 18, 26, 0.85);
+  border: calc(var(--s) * 1) solid var(--line);
+}
+.rec-tile .v { font-family: var(--pixel); font-size: 1.1em; color: var(--ink); }
+.rec-tile .k { font-family: var(--pixel); font-size: 0.4em; letter-spacing: 0.05em; color: var(--muted); }
+.rec-tile.hi .v { color: #ffd98a; text-shadow: 0 0 0.5em rgba(255, 200, 100, 0.35); }
+.rec-survivors { margin-top: 0.6em; }
+.rec-surv {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.5em 0.7em 0.5em 0.4em;
+  text-align: left;
+  background: var(--panel);
+  border: calc(var(--s) * 1) solid color-mix(in srgb, var(--cc) 35%, var(--line));
+}
+.rec-surv.unplayed { opacity: 0.45; filter: grayscale(0.7); }
+.rec-portrait {
+  flex: none;
+  width: 5em;
+  height: 6em;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 60%, color-mix(in srgb, var(--cc) 25%, transparent), transparent 70%);
+}
+.rec-info { display: grid; gap: 0.15em; flex: 1; }
+.rec-name { font-family: var(--pixel); font-size: 0.6em; color: var(--cc); margin-bottom: 0.5em; }
+.rec-line { display: flex; justify-content: space-between; font-size: 1.15em; line-height: 1; color: var(--muted); }
+.rec-line b { font-weight: normal; color: var(--ink); }
+.rec-fav {
+  position: absolute;
+  top: -0.7em;
+  right: 0.6em;
+  font-family: var(--pixel);
+  font-size: 0.4em;
+  padding: 0.35em 0.5em;
+  color: #120e14;
+  background: var(--cc);
+}
 
 /* ------------------------------------------------------------------ banner */
 #banner {

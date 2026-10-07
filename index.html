@@ -29,15 +29,25 @@
 
     <div id="banner" class="hidden"><div id="banner-title"></div><div id="banner-sub"></div></div>
 
-    <section id="scr-title" class="screen">
-      <div class="logo"><span class="logo-last">LAST</span><span class="logo-light">LIGHT</span></div>
+    <section id="scr-title" class="screen asleep">
+      <div class="logo"><span class="logo-last">LAST</span><span class="logo-light off" id="logo-light">LIGHT</span></div>
       <div class="tagline">THE CITY FELL. SURVIVE THE NIGHT, ONE WAVE AT A TIME.</div>
       <div class="menu">
         <button class="btn primary" data-action="solo">1 PLAYER</button>
         <button class="btn" data-action="coop">2 PLAYERS · CO-OP</button>
         <button class="btn" data-action="guide">HOW TO PLAY</button>
+        <button class="btn" data-action="records">RECORDS</button>
       </div>
+      <div class="press-start">PRESS ANY KEY</div>
       <div class="title-foot"><span id="title-best"></span><span id="title-sound"></span></div>
+    </section>
+
+    <section id="scr-records" class="screen dim">
+      <h2>RECORDS</h2>
+      <div class="rec-tiles" id="rec-tiles"></div>
+      <div class="rec-survivors" id="rec-survivors"></div>
+      <div class="hint" id="rec-hint"></div>
+      <button class="btn small" data-action="back">BACK</button>
     </section>
 
     <section id="scr-select" class="screen">

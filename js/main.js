@@ -46,6 +46,11 @@ const ui = new UI({
   solo: () => ui.showSelect(1, startRun),
   coop: () => ui.showSelect(2, startRun),
   guide: () => ui.showGuide(game.state === 'paused' ? 'pause' : 'title'),
+  records: () => ui.showRecords(game.best),
+  wake: () => {
+    sfx.init();
+    game.powerOn();
+  },
   back: () => ui.showTitle(game.best, sfx.muted),
   resume,
   restart: () => {

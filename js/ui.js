@@ -7,6 +7,7 @@ import { SPECIALS } from './waves.js';
 import { fmtInt } from './utils.js';
 import { $, el, pix } from './dom.js';
 import { buildGuide } from './guide.js';
+import { loadRecords } from './records.js';
 
 function upgradeIcon(u, scale) {
   const [name, over] = u.icon;
@@ -32,6 +33,10 @@ function cardDesc(u) {
 }
 
 const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+const fmtTotal = (s) => (s >= 3600 ? `${Math.floor(s / 3600)}H ${Math.floor((s % 3600) / 60)}M` : fmtTime(s));
+
+// Keys that never wake the splash, so browser shortcuts (reload, devtools, fullscreen) keep working.
+const SPLASH_IGNORE = ['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab'];
 
 export class UI {
   constructor(handlers) {
@@ -40,6 +45,8 @@ export class UI {
     this.current = null;
     this.hudCache = new Map();
     this.padNavCd = 0;
+    this.asleep = true; // the "press any key" splash in front of the title menu
+    this.logoLit = false;
     document.querySelectorAll('[data-action]').forEach((b) => {
       b.addEventListener('click', () => {
         this.h.click?.();
@@ -52,6 +59,7 @@ export class UI {
       if (b && document.activeElement !== b) b.focus({ preventScroll: true });
     });
     window.addEventListener('keydown', (e) => this.onKey(e));
+    $('scr-title').addEventListener('pointerdown', () => this.asleep && this.wake());
     $('up-reroll').addEventListener('click', () => this.onReroll?.());
     $('guide-back').addEventListener('click', () => {
       this.h.click?.();
@@ -73,6 +81,71 @@ export class UI {
   }
   get menuOpen() {
     return !!this.current;
+  }
+
+  // First key / click / button press on the splash: unlocks audio (main.js) and brings in the menu.
+  wake() {
+    this.asleep = false;
+    const scr = $('scr-title');
+    scr.classList.replace('asleep', 'waking');
+    // the staggered entrance is for the first time only, not every return to the title
+    setTimeout(() => scr.classList.remove('waking'), 1500);
+    scr.querySelector('button.primary').focus({ preventScroll: true });
+    this.h.wake();
+  }
+
+  setLogoLit(lit) {
+    if (lit === this.logoLit) return;
+    this.logoLit = lit;
+    $('logo-light').classList.toggle('off', !lit);
+  }
+
+  showRecords(best) {
+    const r = loadRecords();
+    const none = (v, f = fmtInt) => (r.runs ? f(v) : '—');
+    const tiles = $('rec-tiles');
+    tiles.innerHTML = '';
+    for (const [k, v, hi] of [
+      ['BEST WAVE', best.wave || '—', true],
+      ['BEST SCORE', best.score ? fmtInt(best.score) : '—', true],
+      ['MOST KILLS IN A RUN', none(r.mostKills), true],
+      ['LONGEST RUN', none(r.longest, fmtTime), true],
+      ['RUNS', fmtInt(r.runs)],
+      ['ZOMBIES KILLED', none(r.kills)],
+      ['ABOMINATIONS SLAIN', none(r.bosses)],
+      ['TIME SURVIVED', none(r.time, fmtTotal)],
+    ]) {
+      const t = el('div', `rec-tile${hi ? ' hi' : ''}`);
+      t.append(el('div', 'v', String(v)), el('div', 'k', k));
+      tiles.append(t);
+    }
+
+    const box = $('rec-survivors');
+    box.innerHTML = '';
+    const played = Object.values(r.survivors);
+    const topRuns = Math.max(0, ...played.map((s) => s.runs));
+    for (const c of Object.values(CHARACTERS)) {
+      const s = r.survivors[c.id];
+      const card = el('div', `rec-surv${s ? '' : ' unplayed'}`);
+      card.style.setProperty('--cc', c.color);
+      const portrait = el('div', 'rec-portrait');
+      portrait.append(pix(SPR.players[c.id].frames[0], 3));
+      const info = el('div', 'rec-info');
+      info.append(el('div', 'rec-name', c.name));
+      if (s) {
+        for (const [k, v] of [['RUNS', s.runs], ['BEST WAVE', s.bestWave], ['KILLS', fmtInt(s.kills)]]) {
+          const line = el('div', 'rec-line');
+          line.append(el('span', '', k), el('b', '', String(v)));
+          info.append(line);
+        }
+      } else info.append(el('div', 'rec-line', 'NOT PLAYED YET'));
+      // ties share the badge, so two survivors played equally often are both favorites
+      if (s && s.runs === topRuns && played.length > 1) card.append(el('span', 'rec-fav', 'FAVORITE'));
+      card.append(portrait, info);
+      box.append(card);
+    }
+    $('rec-hint').textContent = r.runs ? 'ESC BACK' : 'SURVIVE AS LONG AS YOU CAN. YOUR RECORDS SHOW UP HERE AFTER YOUR FIRST RUN.';
+    this.showScreen('scr-records');
   }
 
   showTitle(best, muted) {
@@ -497,6 +570,14 @@ export class UI {
 
   onKey(e) {
     if (!this.current) return;
+    if (this.asleep && this.current === 'scr-title') {
+      if (e.metaKey || e.ctrlKey || e.altKey || /^F\d+$/.test(e.key) || SPLASH_IGNORE.includes(e.key)) return;
+      // swallow the key: it shouldn't also toggle sound (M/N) or press the button that gets focus
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      this.wake();
+      return;
+    }
     const code = e.code;
     if (['ArrowDown', 'ArrowRight', 'KeyS', 'KeyD'].includes(code)) {
       e.preventDefault();
@@ -509,7 +590,7 @@ export class UI {
       const cards = $(this.current).querySelectorAll('.card, .char-card');
       cards[n]?.click();
     } else if (code === 'Escape') {
-      if (this.current === 'scr-select') this.goBack();
+      if (this.current === 'scr-select' || this.current === 'scr-records') this.goBack();
       else if (this.current === 'scr-guide') {
         // consume it, or the pause handler would see ESC on the pause menu and resume the game
         e.stopImmediatePropagation();
@@ -522,6 +603,10 @@ export class UI {
 
   pollGamepad(input, dt) {
     if (!this.current || !input.pads.length) return;
+    if (this.asleep && this.current === 'scr-title') {
+      if (input.pads.some((p, i) => p.buttons.some((_, b) => input.padHit(i, b)))) this.wake();
+      return;
+    }
     this.padNavCd -= dt;
     for (let i = 0; i < input.pads.length; i++) {
       const p = input.pad(i);
@@ -535,7 +620,7 @@ export class UI {
       if (!dir && Math.abs(x) < 0.3 && Math.abs(y) < 0.3 && !input.padDown(i, 12) && !input.padDown(i, 13) && !input.padDown(i, 14) && !input.padDown(i, 15)) this.padNavCd = 0;
       if (input.padHit(i, 0)) document.activeElement?.click?.();
       if (input.padHit(i, 1)) {
-        if (this.current === 'scr-select') this.goBack();
+        if (this.current === 'scr-select' || this.current === 'scr-records') this.goBack();
         else if (this.current === 'scr-guide') this.closeGuide();
         else if (this.current === 'scr-pause') this.h.resume();
       }

@@ -11,6 +11,7 @@ import { rollChoices } from './upgrades.js';
 import { SPR } from './sprites.js';
 import { drawText } from './font.js';
 import { MotionTracker } from './tracker.js';
+import { recordRun } from './records.js';
 import { clamp, dist, dist2, rand, chance, choice, TAU, pixCircle, pixEllipse, pixRing, storage, weightedPick, makeCanvas } from './utils.js';
 
 const G = 420; // gravity for thrown things
@@ -24,6 +25,8 @@ const MAX_DROPS = 2; // fresh drops on the map at once (guns players drop don't 
 const DROP_LIFE = 45;
 const DROP_REACH = 11;
 const ACID = ['#3f6a14', '#5a8a1a', '#2e4a10', '#6f9a24'];
+// Title screen power dips: times (s) at which the grid toggles off, on, off, on... Always ends lit.
+const DIPS = [[0, 0.07, 0.13, 0.2], [0, 0.05, 0.1, 0.16, 0.42, 0.6], [0, 0.3], [0, 0.04, 0.09, 0.5, 0.56, 0.64]];
 const WAVE_FLAVOR = [
   'THEY SMELL YOU', 'STAY IN THE LIGHT', 'NO ONE IS COMING', 'KEEP MOVING', 'AIM FOR THE HEAD',
   'THE NIGHT IS LONG', 'HOLD THE LINE', 'DONT GET CORNERED',
@@ -73,12 +76,14 @@ export class Game {
     this.hurtFlash = 0;
     this.slowmo = 1;
     this.best = storage.get('ll_best', { wave: 0, score: 0 });
+    this.titleAsleep = true; // the "press any key" splash, until main.js calls powerOn()
     this.resetEntities();
     this.startAttract();
   }
 
   resetEntities() {
     this.lightsOut = 0; // blackout progress, 0..1
+    this.gridDown = false; // title screen power dip
     this.fog = 0; // fog density, 0..1
     this.players = [];
     this.zombies = [];
@@ -95,7 +100,7 @@ export class Game {
     this.particles.list.length = 0;
     this.decals.clear();
     this.waves = new WaveManager(this);
-    this.stats = { kills: 0, score: 0, time: 0 };
+    this.stats = { kills: 0, score: 0, time: 0, bosses: 0 };
     this.bossRef = null;
     this.hurtFlash = 0;
     this.slowmo = 1;
@@ -116,6 +121,16 @@ export class Game {
     }
     for (const z of this.zombies) z.spawnT = 0;
     this.attractT = 0;
+    this.dip = null;
+    this.dipT = rand(2, 4);
+    if (this.titleAsleep) this.lightsOut = 1;
+  }
+
+  // Leave the "press any key" splash: the city's lights stutter back on (see updateLightAnim).
+  powerOn() {
+    this.titleAsleep = false;
+    this.dipT = rand(4, 6);
+    this.sfx.play('power', 0.7);
   }
 
   newRun(mode, charIds, controllers) {
@@ -239,6 +254,10 @@ export class Game {
       this.best = { wave: Math.max(wave, this.best.wave), score: Math.max(score, this.best.score) };
       storage.set('ll_best', this.best);
     }
+    recordRun({
+      wave, kills: this.stats.kills, time: this.stats.time, bosses: this.stats.bosses,
+      players: this.players.map((p) => ({ id: p.char.id, kills: p.kills })),
+    });
     this.ui.showGameOver({
       wave, score, kills: this.stats.kills, time: this.stats.time, best: this.best, newBest,
       players: this.players.map((p) => ({ name: p.char.name, color: p.char.color, kills: p.kills, upgrades: p.upgrades })),
@@ -578,6 +597,7 @@ export class Game {
     }
     if (z.type === 'boss') {
       this.bossRef = null;
+      if (this.state !== 'title') this.stats.bosses++;
       this.shake(8);
       this.explode(z.x, z.y - 8, 50, 60, null, { visualOnly: true });
       this.ui.banner('ABOMINATION SLAIN', `+${Math.round(z.def.score * (1 + wave * 0.1))}`, '#ffd24a');
@@ -718,6 +738,7 @@ export class Game {
 
   updateAttract(dt) {
     this.attractT += dt;
+    this.updateTitlePower(dt);
     const t = this.attractT * 0.05;
     const mx = this.map.pw - VIEW_W, my = this.map.ph - VIEW_H;
     this.cam.x = mx * (0.5 + 0.42 * Math.sin(t));
@@ -728,6 +749,29 @@ export class Game {
     this.updateFires(dt);
     this.particles.update(dt);
     this.updateFlashes(dt);
+  }
+
+  // The logo and the city share one power grid: every few seconds it sputters, and the LIGHT in
+  // the logo cuts out together with every lamp and neon sign while the wires buzz.
+  updateTitlePower(dt) {
+    let lit = !this.titleAsleep;
+    if (lit) {
+      if (this.dip) {
+        this.dip.t += dt;
+        const toggles = this.dip.times.filter((x) => x <= this.dip.t).length;
+        if (toggles >= this.dip.times.length) this.dip = null;
+        else lit = toggles % 2 === 0;
+      } else if (this.lightsOut <= 0 && (this.dipT -= dt) <= 0) {
+        this.dip = { times: choice(DIPS), t: 0 };
+        this.dipT = rand(4, 9);
+        this.sfx.play('buzz', 0.6);
+        lit = false;
+      }
+      // while the lights are still coming on, the logo stutters with them
+      if (this.lightsOut > 0.75 || (this.lightsOut > 0.45 && Math.random() < 0.5)) lit = false;
+    }
+    this.gridDown = !lit && !this.titleAsleep && this.lightsOut <= 0;
+    this.ui.setLogoLit(lit);
   }
 
   updateWorld(dt, frozen = false) {
@@ -769,7 +813,8 @@ export class Game {
     const w = this.waves;
     const live = this.state !== 'title' && (w.state === 'intro' || w.state === 'fight');
     const toward = (v, target, rate) => (v < target ? Math.min(target, v + rate * dt) : Math.max(target, v - rate * dt));
-    this.lightsOut = toward(this.lightsOut || 0, live && w.special === 'blackout' ? 1 : 0, 0.5);
+    const dark = (live && w.special === 'blackout') || (this.state === 'title' && this.titleAsleep);
+    this.lightsOut = toward(this.lightsOut || 0, dark ? 1 : 0, 0.5);
     this.fog = toward(this.fog || 0, live && w.special === 'fog' ? 1 : 0, 0.35);
     for (const l of this.map.lights) {
       if (!l.flicker) continue;
@@ -1572,13 +1617,14 @@ export class Game {
       let intensity = l.intensity;
       let color = l.color;
       if (l.flicker && l.off) intensity *= 0.12;
+      if (this.gridDown) intensity *= 0.3;
       if (l.type === 'siren') {
         color = Math.floor(t * 3.5) % 2 ? l.alt : l.color;
         intensity *= 0.7 + 0.3 * Math.abs(Math.sin(t * 11));
       }
       lights.push({ x, y, r: l.r, intensity });
       const glowAlpha = l.type === 'siren' ? 0.5 : l.lamp ? 0.13 : 0.3;
-      glows.push({ x, y, r: l.r * 0.9, color, alpha: glowAlpha * (l.flicker && l.off ? 0.1 : 1) });
+      glows.push({ x, y, r: l.r * 0.9, color, alpha: glowAlpha * ((l.flicker && l.off) || this.gridDown ? 0.1 : 1) });
     }
     for (const f of this.map.fires) {
       const x = f.x - cx, y = f.y - cy;

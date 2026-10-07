@@ -63,6 +63,10 @@ no dependencies. Open it in a browser and play.
 - **Solo or local co-op**, with revives. Keyboard + mouse, arrow keys with auto-aim, or gamepads.
 - **A built-in How to Play guide** covering every survivor, weapon, zombie, wave type, pickup and
   control.
+- **A living title screen.** The city waits in the dark until you press a key, then the street lamps
+  stutter back on. The LIGHT in the logo shares the city's power grid and cuts out with the lamps.
+- **Records** for your best wave and score, lifetime kills, bosses slain and time survived, plus
+  per-survivor stats and your favorite survivor.
 
 ## Quick start
 
@@ -310,6 +314,7 @@ js/
   music.js          procedural adaptive soundtrack: step sequencer, synth instruments, moods
   input.js          keyboard, mouse and gamepad input, plus per-player controllers
   ui.js             menus, upgrade cards, HUD and weapon rack
+  records.js        lifetime records saved after every game over (shown on the Records screen)
   guide.js          the How to Play screen, built from the game's own data and sprites
   dom.js            small DOM helpers shared by the menus and the guide
   font.js           3×5 bitmap font for in-world text

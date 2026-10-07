@@ -3,7 +3,7 @@ import { storage } from './utils.js';
 
 const MIN_GAP = {
   pistol: 0.03, rifle: 0.03, smg: 0.025, shotgun: 0.05, minigun: 0.02, hit: 0.03, zdie: 0.04,
-  groan: 0.35, fizz: 0.1, flame: 0.09, equip: 0.1, explosion: 0.06, pickup: 0.05, hurt: 0.15, bark: 0.3, zap: 0.05, empty: 0.15,
+  groan: 0.35, buzz: 0.3, fizz: 0.1, flame: 0.09, equip: 0.1, explosion: 0.06, pickup: 0.05, hurt: 0.15, bark: 0.3, zap: 0.05, empty: 0.15,
 };
 
 export class Sfx {
@@ -270,6 +270,15 @@ export class Sfx {
         break;
       case 'select':
         this._tone(t, 0.06, 0.15, 'square', 880);
+        break;
+      case 'buzz': // title screen power dip: mains hum sputtering, with a crackle
+        for (let i = 0; i < 3; i++) this._tone(t + i * 0.07, 0.05, 0.08, 'sawtooth', 120);
+        this._noise(t, 0.08, 0.12, 'highpass', 5000);
+        break;
+      case 'power': // breaker thrown, then the lamps hum up
+        this._tone(t, 0.25, 0.5, 'sine', 90, 40);
+        this._noise(t, 0.12, 0.3, 'lowpass', 600);
+        this._tone(t + 0.1, 0.9, 0.05, 'sawtooth', 50, 120, 0.4);
         break;
       case 'revive':
         [440, 554, 659, 880].forEach((f, i) => this._tone(t + i * 0.08, 0.2, 0.18, 'triangle', f));
