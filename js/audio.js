@@ -3,7 +3,7 @@ import { storage } from './utils.js';
 
 const MIN_GAP = {
   pistol: 0.03, rifle: 0.03, smg: 0.025, shotgun: 0.05, minigun: 0.02, hit: 0.03, zdie: 0.04,
-  groan: 0.35, buzz: 0.3, fizz: 0.1, flame: 0.09, equip: 0.1, explosion: 0.06, pickup: 0.05, hurt: 0.15, bark: 0.3, zap: 0.05, empty: 0.15,
+  groan: 0.35, buzz: 0.3, fizz: 0.1, flame: 0.09, equip: 0.1, explosion: 0.06, pickup: 0.05, hurt: 0.15, bark: 0.3, zap: 0.05, empty: 0.15, hatch: 0.08,
 };
 
 export class Sfx {
@@ -204,6 +204,19 @@ export class Sfx {
         this._tone(t, 1.3, 0.5, 'sawtooth', 70, 38, 0.1);
         this._tone(t, 1.3, 0.3, 'sawtooth', 104, 50, 0.1);
         this._noise(t, 1.2, 0.5, 'lowpass', 500, 1, 150);
+        break;
+      case 'shriek': // the Broodmother rears back to fire
+        this._tone(t, 0.7, 0.22, 'sawtooth', 520, 1400, 0.05);
+        this._tone(t, 0.7, 0.16, 'square', 780, 1900, 0.05);
+        this._noise(t, 0.6, 0.3, 'bandpass', 2400, 3, 900);
+        break;
+      case 'gurgle': // something wet churning inside her
+        for (let i = 0; i < 4; i++) this._tone(t + i * 0.07, 0.09, 0.2, 'sine', 140 + r() * 120, 60);
+        this._noise(t, 0.4, 0.3, 'lowpass', 500, 4, 150);
+        break;
+      case 'hatch': // an egg sac splits open
+        this._noise(t, 0.25, 0.5, 'lowpass', 900, 1, 200);
+        this._tone(t + 0.04, 0.2, 0.18, 'sawtooth', 600, 1100);
         break;
       case 'slam':
         this._noise(t, 0.6, 1, 'lowpass', 400, 0.8, 60);

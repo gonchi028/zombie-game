@@ -1,5 +1,6 @@
 // Builds each wave's spawn queue and trickles zombies in from outside the camera.
 import { TILE, VIEW_W, VIEW_H } from './config.js';
+import { ZOMBIES } from './data.js';
 import { choice, rand, randInt, shuffle, weightedPick } from './utils.js';
 
 export const BOSS_EVERY = 5;
@@ -27,6 +28,19 @@ export const SPECIALS = {
     mix: { brute: 1, bloater: 0.6 }, count: 0.3, interval: 1.6,
   },
 };
+
+// Boss waves take turns. Wave 5 brings the Abomination and wave 10 the Broodmother, each on their
+// own the first time. From wave 15 they come together, one more boss every 10 waves, and the two
+// take turns leading the pack.
+export function bossLineup(n) {
+  const k = n / BOSS_EVERY;
+  if (k === 1) return ['boss'];
+  if (k === 2) return ['brood'];
+  const lead = k % 2 ? 'boss' : 'brood';
+  const other = lead === 'boss' ? 'brood' : 'boss';
+  const count = Math.floor(n / (BOSS_EVERY * 2)) + 1;
+  return Array.from({ length: count }, (_, i) => (i % 2 ? other : lead));
+}
 
 function mix(n) {
   return {
@@ -80,8 +94,7 @@ export class WaveManager {
     for (let i = 0; i < count; i++) queue.push(weightedPick(types, (t) => weights[t]));
     shuffle(queue);
     if (n % BOSS_EVERY === 0) {
-      const bosses = Math.floor(n / (BOSS_EVERY * 2)) + 1;
-      for (let b = 0; b < bosses; b++) queue.splice(Math.floor(queue.length * (0.25 + b * 0.3)), 0, 'boss');
+      bossLineup(n).forEach((type, b) => queue.splice(Math.floor(queue.length * (0.25 + b * 0.3)), 0, type));
     }
     this.queue = queue;
     this.total = queue.length;
@@ -108,12 +121,13 @@ export class WaveManager {
         this.spawnT = this.interval * rand(0.6, 1.4);
         const pt = this.pickSpawnPoint();
         if (pt) {
-          const group = this.queue[0] === 'boss' ? 1 : Math.min(this.queue.length, randInt(1, 2 + Math.floor(this.wave / 3)));
+          // bosses arrive on their own
+          const group = ZOMBIES[this.queue[0]].boss ? 1 : Math.min(this.queue.length, randInt(1, 2 + Math.floor(this.wave / 3)));
           for (let i = 0; i < group; i++) {
             const type = this.queue.shift();
             if (!type) break;
             game.spawnZombie(type, pt.x + rand(-6, 6), pt.y + rand(-6, 6), this.scale);
-            if (type === 'boss') break;
+            if (ZOMBIES[type].boss) break;
           }
         }
       }

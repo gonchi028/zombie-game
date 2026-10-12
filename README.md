@@ -48,8 +48,9 @@ no dependencies. Open it in a browser and play.
   signature gun that never runs out of ammo, a unique ability and a passive perk.
 - **Guns spawn around the city.** Find 9 weapons, from SMGs and shotguns to a flamethrower, Tesla
   gun and minigun. Stronger guns turn up in later waves.
-- **Waves that escalate.** Seven zombie types, including the Abomination, a boss that charges,
-  slams and summons every 5th wave.
+- **Waves that escalate.** Six zombie types and two bosses, one every 5th wave: the Abomination,
+  which charges, slams and summons, and the Broodmother, which shells you with acid from afar and
+  lays eggs that hatch into runners.
 - **Special waves** twist the rules every 3rd wave: a city-wide blackout, creeping fog, a rush of
   runners and dogs, or a wave of brutes and bloaters. Survive one for a double bonus.
 - **33 upgrade cards** to build your run, color-coded by what they boost: stat powerups,
@@ -105,7 +106,7 @@ Each run loops through four steps:
 2. **Scavenge guns.** Your signature gun never runs dry, and your second slot holds the best gun
    you find on the streets.
 3. **Build your run.** After each wave, every player picks 1 of 3 upgrade cards, with one reroll.
-4. **Beat the boss.** The Abomination shows up every 5th wave.
+4. **Beat the boss.** Every 5th wave brings the Abomination or the Broodmother, and later both.
 
 Everything you need is also in the **How to Play** screen, on the title menu and the pause menu.
 
@@ -161,13 +162,17 @@ You carry two guns. **Slot 1** is your survivor's signature gun, with unlimited 
 | Spitter | Wave 4 | Keeps its distance and lobs acid. |
 | Brute | Wave 4 | Huge health, shrugs off knockback. |
 | Bloater | Wave 6 | Explodes up close and hurts everyone nearby, zombies included. Pop it early. |
-| **The Abomination** | Every 5th wave | Charges, slams the ground and summons walkers. Bait it into a wall and it stuns itself. Road flares don't fool it. |
+| **The Abomination** | Boss, wave 5 | Charges, slams the ground and summons walkers. Bait it into a wall and it stuns itself. Road flares don't fool it. |
+| **The Broodmother** | Boss, wave 10 | Hangs back and lobs barrages of acid. Rings on the ground show where each glob will land. She lays egg sacs that hatch into two runners each after 6 seconds, so pop them first. Get close and she backs away, and if you corner her she sprays acid all around her. Below half health she enrages and does everything faster. Road flares don't fool her either. |
 
 ### Waves
 
 Every wave brings more zombies and tougher ones: more health, more speed and more damage. Up to 95
-zombies can be alive at once in later waves. From wave 10, boss waves bring two Abominations.
-Co-op waves are 50% bigger.
+zombies can be alive at once in later waves. Co-op waves are 50% bigger.
+
+**Boss waves** come every 5th wave. Wave 5 brings the Abomination and wave 10 the Broodmother, each
+on their own. From wave 15 they come together, taking turns to lead the pack: two bosses on wave
+15, three on waves 20 and 25, four on wave 30, and so on.
 
 **Special waves.** From wave 3, every 3rd wave twists the rules. It's never a boss wave and never
 the same twist twice in a row. Surviving one pays a **double survival bonus**, and the soundtrack
@@ -357,7 +362,9 @@ js/
 - **Balance.** Weapon, survivor and zombie numbers live in `js/data.js`. Wave size and mix are in
   `js/waves.js` (`mix()` and `start()`), and the special waves are in `SPECIALS` in the same file.
   Each one sets its own zombie mix, size and spawn speed, and `SPECIAL_EVERY` controls how often
-  they come. Gun drop timing is at the top of `js/game.js`
+  they come. Which bosses show up on which wave is `bossLineup()` in the same file, and the
+  Broodmother's timings (barrages, eggs, her acid burst) are in `BROOD` at the top of
+  `js/zombie.js`. Gun drop timing is at the top of `js/game.js`
   (`FIRST_DROP`, `DROP_EVERY`, `MAX_DROPS`), and which guns show up when is in `pickDropWeapon()`.
   Road flare timing and lure radius are next to them (`FLARE_TIME`, `LURE_R`).
 - **New gun.** Add an entry to `WEAPONS` in `js/data.js`, with a `tier` (1–3) so it can drop and a

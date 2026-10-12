@@ -11,7 +11,7 @@ const PERIOD = 1.5; // seconds per sweep
 const RANGE = [0, 210, 340]; // world px covered at tracker level 1 / 2 (Deep Scan)
 const TRAIL = 10;
 
-const blipSize = (z) => (z.type === 'boss' ? 3 : z.mass >= 2 ? 2 : 1);
+const blipSize = (z) => (z.def.boss ? 3 : z.mass >= 2 ? 2 : 1);
 
 export class MotionTracker {
   constructor() {
@@ -95,7 +95,7 @@ export class MotionTracker {
       let age = (this.sweep - Math.atan2(dy, dx)) % TAU;
       if (age < 0) age += TAU;
       age /= TAU;
-      const boss = z.type === 'boss';
+      const boss = !!z.def.boss;
       const alpha = Math.max(boss ? 0.8 : 0.12, 1 - age * 1.15);
       const s = blipSize(z) + (age < 0.06 ? 1 : 0);
       const bx = Math.round(CX + dx * k - (s - 1) / 2), by = Math.round(CY + dy * k - (s - 1) / 2);

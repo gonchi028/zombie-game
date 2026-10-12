@@ -15,7 +15,11 @@ const ZOMBIES = [
   { id: 'spitter', name: 'SPITTER', wave: 4, desc: 'Keeps its distance and lobs acid.' },
   { id: 'brute', name: 'BRUTE', wave: 4, desc: 'Huge health. Shrugs off knockback.' },
   { id: 'bloater', name: 'BLOATER', wave: 6, desc: 'Explodes up close and hurts everyone nearby. Pop it early.' },
-  { id: 'boss', name: 'THE ABOMINATION', wave: 5, every: true, desc: 'Charges, slams and summons. Bait it into a wall to stun it.' },
+  { id: 'boss', name: 'THE ABOMINATION', wave: 5, boss: true, desc: 'Charges, slams and summons. Bait it into a wall to stun it.' },
+  {
+    id: 'brood', name: 'THE BROODMOTHER', wave: 10, boss: true, extra: 'egg',
+    desc: 'Hangs back and lobs acid. Her egg sacs hatch runners, so pop them first. Corner her and she sprays acid.',
+  },
 ];
 
 const ITEMS = [
@@ -31,7 +35,7 @@ const STEPS = [
   { title: 'SURVIVE THE WAVE', img: () => SPR.walker[0].frames[0], desc: 'Zombies pour in from the dark. Kill them all to end the wave.' },
   { title: 'SCAVENGE GUNS', img: () => SPR.guns.rifle.img, desc: 'Your signature gun never runs dry. Your 2nd slot holds the best gun you find.' },
   { title: 'BUILD YOUR RUN', img: () => icon('bolt'), desc: 'After each wave, pick 1 of 3 upgrade cards. Reroll if none fit.' },
-  { title: 'BEAT THE BOSS', img: () => SPR.boss[0].frames[0], desc: 'The Abomination shows up every 5th wave.' },
+  { title: 'BEAT THE BOSS', img: () => SPR.boss[0].frames[0], desc: 'A boss shows up every 5th wave: the Abomination or the Broodmother.' },
 ];
 
 const TIPS = [
@@ -198,12 +202,13 @@ function weaponsTab() {
 function zombiesTab() {
   const grid = el('div', 'g-grid g-zombies');
   for (const z of ZOMBIES) {
-    const c = el('div', `g-card g-zombie${z.id === 'boss' ? ' boss' : ''}`);
-    c.append(el('span', 'g-badge', z.every ? 'EVERY 5TH WAVE' : `WAVE ${z.wave}+`));
+    const c = el('div', `g-card g-zombie${z.boss ? ` boss ${z.id}` : ''}`);
+    c.append(el('span', 'g-badge', z.boss ? `BOSS · WAVE ${z.wave}` : `WAVE ${z.wave}+`));
     // same scale for every zombie so their real sizes compare
     const img = SPR[z.id][0].frames[0];
     const art = el('div', 'g-art');
     art.append(pix(img, 2));
+    if (z.extra) art.append(pix(SPR[z.extra][0].frames[0], 2));
     c.append(art, el('div', 'g-title', z.name), el('div', 'g-desc', z.desc));
     grid.append(c);
   }
@@ -212,7 +217,7 @@ function zombiesTab() {
 
 const WAVE_RULES = [
   { title: 'EVERY WAVE', img: () => SPR.walker[0].frames[0], desc: 'Bigger and tougher than the last. Clear it to pick an upgrade.' },
-  { title: 'BOSS WAVES', img: () => SPR.boss[0].frames[0], desc: `Every ${BOSS_EVERY}th wave brings the Abomination. From wave 10, two of them.` },
+  { title: 'BOSS WAVES', img: () => SPR.boss[0].frames[0], desc: `Every ${BOSS_EVERY}th wave brings a boss: the Abomination, then the Broodmother. From wave ${BOSS_EVERY * 3}, they come together.` },
   { title: 'SPECIAL WAVES', img: () => icon('bolt', { y: '#9aa8ff', Y: '#5a6ad8' }), desc: `Every ${SPECIAL_EVERY}rd wave from wave ${SPECIAL_EVERY} twists the rules. Survive it for a double bonus.` },
 ];
 // which sprite stands in for each special wave in the guide

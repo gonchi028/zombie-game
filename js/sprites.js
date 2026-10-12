@@ -241,6 +241,46 @@ const BOSS_LEGS = [
   ['........oPPPooPPPo......', '.......oPPPo..oPPPo.....', '.......oPPPo..oFFFo.....', '.......oFFFo..ooooo.....', '.......ooooo............'],
 ];
 
+// ---------------------------------------------------------------- broodmother (26 x 24) and her eggs (8 x 9)
+
+// hunched under a glowing egg sac, many-eyed head thrust forward, one long clawed arm
+const BROOD_TOP = [
+  '....oooooo................',
+  '..ooGGGGGGoo..............',
+  '.oGGLGGgGGGGo.............',
+  'oGGGGGGGGLGGGo...oooooo...',
+  'oGLGGgGGGGGgGGo.oSSSSSSo..',
+  'oGGGGGGLGGGGGGGooSEESEESo.',
+  'oGgGGGGGGGGgGGGoSSSSSSSSo.',
+  'oGGGLGGgGGGGGLGoSSmWmWmSo.',
+  'oGGGGGGGGGGGGGGGoSmmmmmSo.',
+  '.oGGgGGLGGGGgGGGSoSSSSSo..',
+  '.oGGGGGGGGGGGGSSSSoooooSo.',
+  '..oGLGGGgGGGSSSSSSSSSSSSSo',
+  '...ooGGGGGGSSSSSSoooooSSSo',
+  '.....ooooooSSSSSSo...oSoSo',
+  '.........oSSSBBBSSo...o.o.',
+  '........oSSSBBBBBSo.......',
+  '........oSSBBBBBBSo.......',
+  '........oSSBBBBBSo........',
+  '.........oBBBBBBBo........',
+  '.........oPPPPPPPo........',
+];
+const BROOD_LEGS = [
+  ['.........oPPo.oPPo........', '.........oPPo.oPPo........', '.........oFFo.oFFo........', '.........oooo.oooo........'],
+  ['.........oPPo.oPPo........', '.........oFFo.oPPo........', '.........oooo.oFFo........', '..............oooo........'],
+  ['.........oPPo.oPPo........', '.........oPPo.oFFo........', '.........oFFo.oooo........', '.........oooo.............'],
+];
+// the second frame pulses brighter; eggs show it more and more as they get ready to hatch
+const EGG = [
+  ['..oooo..', '.oGGLGo.', 'oGLGGgGo', 'oGGgGGLo', 'oGGGEGGo', 'oLGgGGGo', 'oGGGLgGo', '.oGGGGo.', '..oooo..'],
+  ['..oooo..', '.oGLLGo.', 'oGLLGgGo', 'oGGgLLLo', 'oGLLELGo', 'oLLgGLGo', 'oGGLLgGo', '.oGGGGo.', '..oooo..'],
+];
+const BROOD_PAL = {
+  o: O, G: '#6f9a34', g: '#4a6e22', L: '#c8f05a', S: '#9c946a', B: '#5a5040', m: '#2a0a10', W: '#eae2cc',
+  E: '#e8ff6a', P: '#4a4436', F: '#2a2420',
+};
+
 // ---------------------------------------------------------------- zombie palettes
 
 const SHIRTS = [
@@ -540,6 +580,8 @@ export function buildAllSprites() {
       ),
     ),
   ];
+  SPR.brood = [zombieSet(BROOD_LEGS.map((legs) => buildSprite([...BROOD_TOP, ...legs], BROOD_PAL)))];
+  SPR.egg = [zombieSet(EGG.map((rows) => buildSprite(rows, BROOD_PAL)))];
 
   SPR.guns = {};
   for (const [k, g] of Object.entries(GUN_ART)) {

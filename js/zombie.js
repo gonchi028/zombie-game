@@ -15,6 +15,8 @@ const TYPE_INFO = {
   bloater: { eyes: [[5, 3], [6, 3], [9, 3], [10, 3]], eye: '#e8ff6a', bodyOff: 7 },
   dog: { eyes: [[11, 2]], eye: '#ff3a2a', bodyOff: 2 },
   boss: { eyes: [[8, 3], [9, 3], [14, 3], [15, 3]], eye: '#ff3020', bodyOff: 12 },
+  brood: { eyes: [[18, 5], [19, 5], [21, 5], [22, 5]], eye: '#e8ff6a', bodyOff: 11 },
+  egg: { eyes: [[4, 4]], eye: '#e8ff6a', bodyOff: 4 },
 };
 
 // How each type moves: hop height, side-to-side sway, forward lean (radians), footfall squash.
@@ -26,7 +28,25 @@ const MOTION = {
   bloater: { bob: 1, sway: 0.09, lean: 0, step: 0.18, jelly: 0.09 },
   dog: { gallop: true },
   boss: { bob: 2, sway: 0.05, lean: 0.05, step: 0.28, dust: 4, stomp: true },
+  brood: { bob: 1.5, sway: 0.08, lean: 0.04, step: 0.22, dust: 3, jelly: 0.04 },
+  egg: { bob: 0, sway: 0, lean: 0, step: 0, jelly: 0.06 },
 };
+
+// The Broodmother keeps her distance and shells you. All times in seconds, distances in pixels.
+const BROOD = {
+  keepAway: 80, // backs off from anyone closer than this
+  hold: 150, // and barely moves while she has a shot from here
+  volley: 5, // acid globs per barrage
+  barrageEvery: [4.5, 6],
+  eggsEvery: [10, 13],
+  eggs: 2, // per clutch
+  burstR: 42, // get this close and she sprays acid all around her
+  burstEvery: 5,
+};
+// below half health she enrages
+const BROOD_ENRAGED = { ...BROOD, volley: 8, barrageEvery: [3, 4], eggsEvery: [7, 9], eggs: 3 };
+export const EGG_HATCH = 6; // seconds before an egg sac hatches
+export const EGG_RUNNERS = 2; // runners per hatched egg
 
 export class Zombie {
   constructor(game, type, x, y, scale = { hp: 1, speed: 1, dmg: 1 }) {
@@ -42,7 +62,7 @@ export class Zombie {
     this.y = y;
     this.r = d.r;
     this.maxHp = this.hp = Math.round(d.hp * scale.hp);
-    this.baseSpeed = d.speed * scale.speed * (type === 'boss' ? 1 : rand(0.85, 1.15));
+    this.baseSpeed = d.speed * scale.speed * (d.boss ? 1 : rand(0.85, 1.15));
     this.dmg = d.dmg * scale.dmg;
     this.mass = d.mass;
     this.knockResist = d.knockResist || 0;
@@ -73,6 +93,13 @@ export class Zombie {
     this.slamCd = 3;
     this.summonT = 8;
     this.chargeDir = 0;
+    this.barrageCd = 2.5;
+    this.eggT = 5;
+    this.burstCd = 0;
+    this.volley = 0;
+    this.shotT = 0;
+    this.enraged = false;
+    this.hatchT = EGG_HATCH;
     this.wanderA = rand(0, TAU);
     this.dead = false;
     this.spawnT = 0.35;
@@ -131,6 +158,11 @@ export class Zombie {
     if (this.slow > 0) {
       this.slow -= dt;
       if (Math.random() < dt * 6) game.particles.add({ type: 'spark', x: this.x + rand(-4, 4), y: this.y - this.bodyOff, vy: -10, life: 0.4, color: '#9adfff', add: true });
+    }
+
+    if (this.type === 'egg') {
+      this.updateEgg(dt);
+      return;
     }
 
     // knockback decays regardless of state
@@ -233,6 +265,15 @@ export class Zombie {
         if (this.updateBoss(dt, tgt, d)) return;
         if (this.state !== 'walk') speed = 0;
         break;
+      case 'brood':
+        this.updateBrood(dt, tgt, d);
+        if (this.state !== 'walk') speed = 0;
+        else if (tgt && this.hasLos && d < BROOD.keepAway) {
+          dirX = -dirX;
+          dirY = -dirY;
+        } else if (tgt && this.hasLos && d < BROOD.hold) speed *= 0.2;
+        if (this.enraged) speed *= 1.3;
+        break;
     }
 
     // reached a flare: crowd around it and claw at it
@@ -253,7 +294,8 @@ export class Zombie {
     this.vy += (dirY * speed - this.vy) * accel;
     this.x += (this.vx + this.kx) * dt;
     this.y += (this.vy + this.ky) * dt;
-    if (Math.abs(this.vx) > 3) this.facing = this.vx > 0 ? 1 : -1;
+    // the Broodmother keeps her eyes on you, even while she backs away
+    if (Math.abs(this.vx) > 3 && !(this.type === 'brood' && this.hasLos)) this.facing = this.vx > 0 ? 1 : -1;
     const sp = Math.hypot(this.vx, this.vy);
     this.anim += dt * this.def.anim * (sp / Math.max(1, this.baseSpeed));
 
@@ -358,6 +400,87 @@ export class Zombie {
         break;
     }
     return false;
+  }
+
+  // Broodmother: hangs back and shells you with acid, lobs eggs that hatch into runners, and sprays
+  // acid all around her when you corner her. Below half health she enrages and does it all faster.
+  updateBrood(dt, tgt, d) {
+    const game = this.game;
+    const B = this.enraged ? BROOD_ENRAGED : BROOD;
+    this.stateT -= dt;
+    this.barrageCd -= dt;
+    this.burstCd -= dt;
+    this.eggT -= dt;
+    if (!this.enraged && this.hp < this.maxHp * 0.5) {
+      this.enraged = true;
+      this.baseSpeed *= 1.15;
+      this.sq.kick(0.5);
+      game.sound('shriek', this.x, this.y);
+      game.particles.text(this.x, this.y - 34, 'ENRAGED!', '#c8f05a', 1.4);
+      game.shake(4);
+    }
+    if (tgt && this.hasLos) this.facing = tgt.x >= this.x ? 1 : -1;
+    switch (this.state) {
+      case 'walk':
+        if (!tgt) break;
+        if (this.burstCd <= 0 && d < B.burstR) {
+          this.state = 'burstwind';
+          this.stateT = 0.5;
+          game.sound('gurgle', this.x, this.y);
+        } else if (this.eggT <= 0) {
+          this.state = 'laywind';
+          this.stateT = 0.6;
+          game.sound('gurgle', this.x, this.y, 0.6);
+        } else if (this.barrageCd <= 0 && this.hasLos && d < 230) {
+          this.state = 'barragewind';
+          this.stateT = 0.8;
+          this.volley = B.volley;
+          game.sound('shriek', this.x, this.y, 0.8);
+        }
+        break;
+      case 'barragewind':
+        if (Math.floor(this.stateT * 10) % 2 === 0) this.flash = 0.04;
+        if (this.stateT <= 0) {
+          this.state = 'barrage';
+          this.shotT = 0;
+        }
+        break;
+      case 'barrage':
+        this.shotT -= dt;
+        if (this.shotT <= 0 && this.volley > 0 && tgt) {
+          this.shotT = 0.09;
+          game.broodGlob(this, tgt, this.volley === B.volley); // the first glob goes straight at you
+          this.volley--;
+        }
+        if (this.volley <= 0 || !tgt) {
+          this.state = 'walk';
+          this.barrageCd = rand(...B.barrageEvery);
+        }
+        break;
+      case 'laywind':
+        if (this.stateT <= 0) {
+          this.state = 'walk';
+          this.eggT = rand(...B.eggsEvery);
+          game.layEggs(this, tgt, B.eggs);
+        }
+        break;
+      case 'burstwind':
+        if (Math.floor(this.stateT * 14) % 2 === 0) this.flash = 0.04;
+        if (this.stateT <= 0) {
+          this.state = 'walk';
+          this.burstCd = B.burstEvery;
+          game.broodBurst(this, B.burstR);
+        }
+        break;
+    }
+  }
+
+  // Egg sacs just sit there, pulsing faster and faster until they split open.
+  updateEgg(dt) {
+    this.hatchT -= dt;
+    const k = 1 - this.hatchT / EGG_HATCH;
+    this.anim += dt * (1.5 + k * k * 14);
+    if (this.hatchT <= 0) this.game.hatchEgg(this);
   }
 
   frameIndex() {
@@ -470,6 +593,49 @@ export class Zombie {
             break;
         }
         break;
+      case 'brood':
+        switch (this.state) {
+          case 'barragewind': {
+            // rear back, sac swelling
+            const w = 1 - this.stateT / 0.8;
+            sy += 0.2 * w;
+            sx += 0.1 * w;
+            rot -= 0.22 * w * f;
+            ox += rand(-1, 1) * w;
+            break;
+          }
+          case 'barrage':
+            // heave forward with every glob
+            rot += 0.14 * f;
+            sy -= 0.08;
+            sx += 0.1;
+            break;
+          case 'laywind': {
+            // squat down to push the eggs out
+            const w = 1 - this.stateT / 0.6;
+            sy -= 0.22 * w;
+            sx += 0.18 * w;
+            break;
+          }
+          case 'burstwind': {
+            // puff up like a bloater about to pop
+            const w = 1 - this.stateT / 0.5;
+            sx += 0.3 * w + rand(-0.04, 0.04);
+            sy += 0.2 * w + rand(-0.04, 0.04);
+            break;
+          }
+        }
+        if (this.enraged) ox += rand(-0.6, 0.6);
+        break;
+      case 'egg': {
+        // throb, harder as it gets ready to hatch
+        const k = 1 - this.hatchT / EGG_HATCH;
+        const beat = Math.max(0, Math.sin(this.anim * Math.PI));
+        sx += beat * (0.04 + k * 0.14);
+        sy += beat * (0.06 + k * 0.18);
+        if (k > 0.75) ox += rand(-1, 1) * (k - 0.75) * 4;
+        break;
+      }
     }
 
     // melee lunge toward the victim
@@ -482,7 +648,7 @@ export class Zombie {
     }
     // burning zombies flail
     if (this.burn > 0) rot += Math.sin(t * 28 + this.id) * 0.08;
-    if (this.stun > 0 && this.type !== 'boss') rot += Math.sin(t * 14 + this.id) * 0.1;
+    if (this.stun > 0 && !this.def.boss) rot += Math.sin(t * 14 + this.id) * 0.1;
 
     sx += this.sq.v;
     sy -= this.sq.v;

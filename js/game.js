@@ -5,7 +5,7 @@ import { CityMap } from './map.js';
 import { Lighting, buildCone } from './lighting.js';
 import { Decals, Particles } from './particles.js';
 import { Player, MAX_FLARES } from './player.js';
-import { Zombie } from './zombie.js';
+import { Zombie, EGG_RUNNERS } from './zombie.js';
 import { WaveManager, SPECIALS } from './waves.js';
 import { rollChoices } from './upgrades.js';
 import { SPR } from './sprites.js';
@@ -25,6 +25,7 @@ const MAX_DROPS = 2; // fresh drops on the map at once (guns players drop don't 
 const DROP_LIFE = 45;
 const DROP_REACH = 11;
 const ACID = ['#3f6a14', '#5a8a1a', '#2e4a10', '#6f9a24'];
+const ACID_BLOOD = new Set(['spitter', 'bloater', 'brood', 'egg']); // zombies that bleed acid
 // Title screen power dips: times (s) at which the grid toggles off, on, off, on... Always ends lit.
 const DIPS = [[0, 0.07, 0.13, 0.2], [0, 0.05, 0.1, 0.16, 0.42, 0.6], [0, 0.3], [0, 0.04, 0.09, 0.5, 0.56, 0.64]];
 const WAVE_FLAVOR = [
@@ -302,9 +303,10 @@ export class Game {
     const z = new Zombie(this, type, x, y, scale);
     this.map.resolveCircle(z);
     this.zombies.push(z);
-    if (type === 'boss' && this.state !== 'title') {
+    const boss = z.def.boss;
+    if (boss && this.state !== 'title') {
       this.bossRef = z;
-      this.ui.banner('THE ABOMINATION', 'HAS ENTERED THE CITY', '#ff4a3a');
+      this.ui.banner(boss.name, boss.arrives, z.type === 'brood' ? '#c8f05a' : '#ff4a3a');
       this.sfx.play('roar', 1);
       this.shake(5);
     }
@@ -486,9 +488,9 @@ export class Game {
     });
   }
 
-  // The flare a zombie should chase instead of a player, if any. The boss can't be fooled.
+  // The flare a zombie should chase instead of a player, if any. Bosses can't be fooled.
   lureFor(z) {
-    if (z.type === 'boss') return null;
+    if (z.def.boss) return null;
     let best = null, bd = LURE_R * LURE_R;
     for (const t of this.throwables) {
       if (!t.lure || t.dead) continue;
@@ -501,15 +503,82 @@ export class Game {
     return best;
   }
 
+  // Lob something from a zombie so it lands on (tx, ty) after T seconds. Acid splashes into a pool;
+  // an egg turns into an egg sac where it lands.
+  lobShot(z, tx, ty, T, o) {
+    const z0 = o.z0 ?? 8;
+    const s = {
+      kind: 'acid', x: z.x, y: z.y, z: z0, vx: (tx - z.x) / T, vy: (ty - z.y) / T, vz: (0.5 * G * T * T - z0) / T,
+      tx, ty, t: 0, T, poolR: 14, poolT: 3.5, dmg: 0, dead: false, ...o,
+    };
+    this.enemyShots.push(s);
+    return s;
+  }
+
   spitAcid(z, tgt) {
-    const T = 0.75, z0 = 8;
-    const tx = tgt.x + tgt.vx * 0.3, ty = tgt.y + tgt.vy * 0.3;
-    this.enemyShots.push({
-      x: z.x, y: z.y, z: z0, vx: (tx - z.x) / T, vy: (ty - z.y) / T, vz: (0.5 * G * T * T - z0) / T,
-      dmg: 10 * (this.waves.scale?.dmg || 1), dead: false,
-    });
+    this.lobShot(z, tgt.x + tgt.vx * 0.3, tgt.y + tgt.vy * 0.3, 0.75, { dmg: 10 * (this.waves.scale?.dmg || 1) });
     z.onSpit();
     this.sound('spit', z.x, z.y);
+  }
+
+  // One glob of a Broodmother barrage: the first goes where you're heading, the rest scatter around
+  // you. They fly slowly and their landing spots are marked, so you can get out of the way.
+  broodGlob(b, tgt, aimed) {
+    let tx = tgt.x + tgt.vx * 0.6, ty = tgt.y + tgt.vy * 0.6;
+    if (!aimed) {
+      const a = rand(0, TAU), d = rand(16, 52);
+      tx = tgt.x + Math.cos(a) * d;
+      ty = tgt.y + Math.sin(a) * d;
+    }
+    this.lobShot(b, tx, ty, rand(0.95, 1.15), { z0: 20, dmg: 13 * (this.waves.scale?.dmg || 1), poolR: 12, poolT: 2.6, mark: true, big: true });
+    b.onSpit();
+    this.sound('spit', b.x, b.y, 0.8);
+  }
+
+  // Cornered: acid sprays out all around her and shoves everyone back.
+  broodBurst(b, r) {
+    b.onSlam();
+    for (const p of this.players) {
+      if (p.alive && dist2(b.x, b.y, p.x, p.y) < (r + p.r) ** 2) {
+        p.hurt(b.dmg * 0.6, b);
+        const a = Math.atan2(p.y - b.y, p.x - b.x);
+        p.vx += Math.cos(a) * 230;
+        p.vy += Math.sin(a) * 230;
+      }
+    }
+    const n = 10;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * TAU + rand(-0.15, 0.15), d = rand(44, 72);
+      this.lobShot(b, b.x + Math.cos(a) * d, b.y + Math.sin(a) * d, rand(0.45, 0.6), { z0: 16, dmg: 10 * (this.waves.scale?.dmg || 1), poolR: 11, poolT: 2.2 });
+    }
+    this.particles.ring(b.x, b.y, r, '#b4ff4a', 0.4);
+    this.particles.gibs(b.x, b.y - 10, 12, ACID);
+    this.addFlash(b.x, b.y, 80, 0.25, '#9aff4a');
+    this.shake(5);
+    this.sound('splat', b.x, b.y);
+    this.sound('spit', b.x, b.y);
+  }
+
+  // Lob a clutch of eggs around the Broodmother, out toward whoever she's after.
+  layEggs(b, tgt, n) {
+    const toward = tgt ? Math.atan2(tgt.y - b.y, tgt.x - b.x) : rand(0, TAU);
+    for (let i = 0; i < n; i++) {
+      const a = toward + rand(-1.3, 1.3), d = rand(26, 60);
+      this.lobShot(b, b.x + Math.cos(a) * d, b.y + Math.sin(a) * d, rand(0.5, 0.7), { kind: 'egg', z0: 18 });
+    }
+    b.onSlam();
+    this.sound('splat', b.x, b.y, 0.7);
+  }
+
+  hatchEgg(egg) {
+    egg.dead = true;
+    for (let i = 0; i < EGG_RUNNERS; i++) {
+      const r = this.spawnZombie('runner', egg.x + rand(-4, 4), egg.y + rand(-4, 4), this.waves.scale);
+      r.spawnT = 0.2;
+    }
+    this.particles.gibs(egg.x, egg.y - 4, 10, ACID);
+    this.decals.blood(egg.x, egg.y, 8, ACID);
+    this.sound('hatch', egg.x, egg.y);
   }
 
   // ------------------------------------------------------------------ damage
@@ -523,7 +592,7 @@ export class Game {
       z.kx += (o.ax || 0) * kn;
       z.ky += (o.ay || 0) * kn;
     }
-    const pal = z.type === 'spitter' || z.type === 'bloater' ? ACID : undefined;
+    const pal = ACID_BLOOD.has(z.type) ? ACID : undefined;
     this.particles.blood(z.x, z.y - z.bodyOff, Math.atan2(o.ay || 0, o.ax || 0), o.crit ? 8 : 4, pal, 70);
     if (o.crit) this.particles.text(z.x, z.y - z.bodyOff - 10, String(Math.round(amount)), '#ffd24a', 0.6);
     this.sound('hit', z.x, z.y, 0.5);
@@ -585,22 +654,35 @@ export class Game {
       owner.kills++;
       if (owner.stats.lifesteal) owner.heal(owner.stats.lifesteal);
     }
-    const pal = z.type === 'spitter' || z.type === 'bloater' ? ACID : undefined;
-    this.particles.gibs(z.x, z.y - z.bodyOff, z.type === 'boss' ? 24 : 5, pal);
+    const pal = ACID_BLOOD.has(z.type) ? ACID : undefined;
+    if (z.type === 'egg') {
+      // popped before it hatched: just a wet burst, no body
+      this.particles.gibs(z.x, z.y - 4, 8, ACID);
+      this.decals.blood(z.x, z.y, 7, ACID);
+      this.sound('splat', z.x, z.y, 0.7);
+      return;
+    }
+    const boss = z.def.boss;
+    this.particles.gibs(z.x, z.y - z.bodyOff, boss ? 24 : 5, pal);
     this.particles.blood(z.x, z.y - z.bodyOff, rand(0, TAU), 10, pal, 90);
-    this.decals.blood(z.x, z.y, z.type === 'boss' ? 18 : z.r + 3, pal);
+    this.decals.blood(z.x, z.y, boss ? 18 : z.r + 3, pal);
     z.ragdoll(this.particles);
     this.sound('zdie', z.x, z.y, 0.8);
 
     if (z.type === 'bloater') {
       this.explode(z.x, z.y - 4, 44, 40 * (this.waves.scale?.dmg || 1), null, { hurtPlayers: true, acid: true });
     }
-    if (z.type === 'boss') {
-      this.bossRef = null;
+    if (boss) {
+      // the HUD bar moves on to the next boss still standing, if any
+      if (this.bossRef === z) this.bossRef = this.zombies.find((o) => o.def.boss && !o.dead) || null;
       if (this.state !== 'title') this.stats.bosses++;
       this.shake(8);
       this.explode(z.x, z.y - 8, 50, 60, null, { visualOnly: true });
-      this.ui.banner('ABOMINATION SLAIN', `+${Math.round(z.def.score * (1 + wave * 0.1))}`, '#ffd24a');
+      this.ui.banner(boss.slain, `+${Math.round(z.def.score * (1 + wave * 0.1))}`, '#ffd24a');
+      // with no Broodmother left, her unhatched eggs burst
+      if (z.type === 'brood' && !this.zombies.some((o) => o.type === 'brood' && !o.dead)) {
+        for (const e of this.zombies) if (e.type === 'egg') this.killZombie(e, owner);
+      }
       this.spawnPickup('maxammo', z.x, z.y);
       this.spawnPickup('health', z.x + 8, z.y);
       this.spawnPickup('health', z.x - 8, z.y);
@@ -876,7 +958,7 @@ export class Game {
         if (d2 >= rr * rr || d2 < 0.0001) continue;
         const d = Math.sqrt(d2);
         const push = (rr - d) / d;
-        const zShare = z.type === 'boss' ? 0.1 : p.dashT > 0 ? 1 : 0.75;
+        const zShare = z.mass >= 30 ? 0.1 : p.dashT > 0 ? 1 : 0.75; // bosses and egg sacs barely budge
         z.x += dx * push * zShare;
         z.y += dy * push * zShare;
         p.x -= dx * push * (1 - zShare);
@@ -1018,20 +1100,27 @@ export class Game {
       s.z += s.vz * dt;
       s.x += s.vx * dt;
       s.y += s.vy * dt;
+      s.t += dt;
       if (Math.random() < dt * 30) this.particles.add({ type: 'drop', x: s.x, y: s.y, z: s.z, vz: 0, gravity: 200, life: 1, color: ACID[1], stamp: true });
       let splash = s.z <= 0 || this.map.bulletBlocked(s.x, s.y);
-      if (!splash && s.z < 12) {
+      if (!splash && s.z < 12 && s.kind === 'acid') {
         for (const p of this.players) {
           if (p.alive && dist2(p.x, p.y, s.x, s.y) < 7 * 7) splash = true;
         }
       }
-      if (splash) {
-        s.dead = true;
-        for (const p of this.players) if (p.alive && dist2(p.x, p.y, s.x, s.y) < 12 * 12) p.hurt(s.dmg, s);
-        this.pools.push({ kind: 'acid', x: s.x, y: s.y, r: 14, t: 3.5, life: 3.5, dps: s.dmg });
-        this.particles.gibs(s.x, s.y, 6, ACID);
-        this.sound('splat', s.x, s.y);
+      if (!splash) continue;
+      s.dead = true;
+      if (s.kind === 'egg') {
+        const egg = this.spawnZombie('egg', s.x, s.y, this.waves.scale);
+        egg.spawnT = 0;
+        this.particles.gibs(s.x, s.y, 4, ACID);
+        this.sound('splat', s.x, s.y, 0.5);
+        continue;
       }
+      for (const p of this.players) if (p.alive && dist2(p.x, p.y, s.x, s.y) < 12 * 12) p.hurt(s.dmg, s);
+      this.pools.push({ kind: 'acid', x: s.x, y: s.y, r: s.poolR, t: s.poolT, life: s.poolT, dps: s.dmg });
+      this.particles.gibs(s.x, s.y, 6, ACID);
+      this.sound('splat', s.x, s.y);
     }
     this.enemyShots = this.enemyShots.filter((s) => !s.dead);
   }
@@ -1384,6 +1473,7 @@ export class Game {
     this.particles.drawAdditive(g, cx, cy);
     this.drawBullets(g, cx, cy);
     this.drawBolts(g, cx, cy);
+    this.drawShotMarkers(g, cx, cy);
     for (const z of this.zombies) z.drawEyes(g, cx, cy);
     this.particles.drawOverlay(g, cx, cy);
     if (this.state !== 'title') this.drawWorldUI(g, cx, cy);
@@ -1529,10 +1619,30 @@ export class Game {
       }
     }
     for (const s of this.enemyShots) {
-      pixEllipse(g, s.x - cx, s.y - cy + 1, 2, 1, 'rgba(0,0,0,0.4)');
-      pixCircle(g, s.x - cx, s.y - s.z - cy, 2, '#6f9a24');
+      pixEllipse(g, s.x - cx, s.y - cy + 1, s.big ? 3 : 2, 1, 'rgba(0,0,0,0.4)');
+      if (s.kind === 'egg') {
+        const img = SPR.egg[0].frames[0];
+        g.drawImage(img, Math.round(s.x - cx - img.width / 2), Math.round(s.y - s.z - cy - img.height / 2));
+        continue;
+      }
+      pixCircle(g, s.x - cx, s.y - s.z - cy, s.big ? 3 : 2, '#6f9a24');
       g.fillStyle = '#c8ff6a';
       g.fillRect(Math.round(s.x - cx - 1), Math.round(s.y - s.z - cy - 1), 1, 1);
+    }
+  }
+
+  // Where each Broodmother glob will land: a ring that closes in as it falls. Drawn over the
+  // darkness so it reads even in a blackout.
+  drawShotMarkers(g, cx, cy) {
+    for (const s of this.enemyShots) {
+      if (!s.mark) continue;
+      const k = clamp(s.t / s.T, 0, 1);
+      const x = s.tx - cx, y = s.ty - cy;
+      g.globalAlpha = 0.35 + 0.5 * k;
+      pixRing(g, x, y, Math.round(s.poolR * (1.6 - 0.6 * k)), '#c8f05a');
+      g.fillStyle = '#c8f05a';
+      g.fillRect(Math.round(x), Math.round(y), 1, 1);
+      g.globalAlpha = 1;
     }
   }
 
@@ -1762,15 +1872,15 @@ export class Game {
         g.fillRect(px - (w2 >> 1), py - (w2 >> 1), Math.max(1, w2), Math.max(1, w2));
       }
     }
-    // off-screen threat arrows: the boss always, stragglers at the end of a wave
+    // off-screen threat arrows: bosses always, stragglers at the end of a wave
     const showAll = this.waves.state === 'fight' && this.waves.queue.length === 0 && this.zombies.length <= 6;
     for (const z of this.zombies) {
-      if (!(showAll || z.type === 'boss')) continue;
+      if (!(showAll || z.def.boss)) continue;
       const x = z.x - cx, y = z.y - cy;
       if (x > -4 && x < VIEW_W + 4 && y > -4 && y < VIEW_H + 4) continue;
       const ax = clamp(x, 8, VIEW_W - 8), ay = clamp(y, 8, VIEW_H - 8);
       const a = Math.atan2(y - ay, x - ax);
-      g.fillStyle = z.type === 'boss' ? '#ff3020' : '#ff8a5a';
+      g.fillStyle = z.def.boss ? '#ff3020' : '#ff8a5a';
       for (let i = 0; i < 4; i++) {
         const w2 = 3 - i;
         const px = Math.round(ax + Math.cos(a) * i), py = Math.round(ay + Math.sin(a) * i);

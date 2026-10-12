@@ -130,7 +130,7 @@ export class UI {
       ['LONGEST RUN', none(r.longest, fmtTime), true],
       ['RUNS', fmtInt(r.runs)],
       ['ZOMBIES KILLED', none(r.kills)],
-      ['ABOMINATIONS SLAIN', none(r.bosses)],
+      ['BOSSES SLAIN', none(r.bosses)],
       ['TIME SURVIVED', none(r.time, fmtTotal)],
     ]) {
       const t = el('div', `rec-tile${hi ? ' hi' : ''}`);
@@ -492,8 +492,11 @@ export class UI {
     this.set('score', $('hud-score'), 'text', fmtInt(game.stats.score));
     this.set('kills', $('hud-kills'), 'text', fmtInt(game.stats.kills));
     const boss = game.bossRef && !game.bossRef.dead ? game.bossRef : null;
-    this.set('bossvis', $('hud-boss'), 'class', boss ? '' : 'hidden');
-    if (boss) this.set('bossfill', $('hud-boss-fill'), 'width', `${Math.max(0, (boss.hp / boss.maxHp) * 100).toFixed(1)}%`);
+    this.set('bossvis', $('hud-boss'), 'class', boss ? boss.type : 'hidden'); // the class tints the bar per boss
+    if (boss) {
+      this.set('bossname', $('hud-boss-name'), 'text', boss.def.boss.name);
+      this.set('bossfill', $('hud-boss-fill'), 'width', `${Math.max(0, (boss.hp / boss.maxHp) * 100).toFixed(1)}%`);
+    }
 
     game.players.forEach((p, i) => {
       const P = this.panels[i];
