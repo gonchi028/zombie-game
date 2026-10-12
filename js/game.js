@@ -12,6 +12,7 @@ import { SPR } from './sprites.js';
 import { drawText } from './font.js';
 import { MotionTracker } from './tracker.js';
 import { recordRun } from './records.js';
+import { Cinematic } from './cinematic.js';
 import { clamp, dist, dist2, rand, chance, choice, TAU, pixCircle, pixEllipse, pixRing, storage, weightedPick, makeCanvas } from './utils.js';
 
 const G = 420; // gravity for thrown things
@@ -87,6 +88,8 @@ export class Game {
     this.gridDown = false; // title screen power dip
     this.fog = 0; // fog density, 0..1
     this.players = [];
+    this.cast = []; // survivors in the opening cinematic: drawn and lit, but nobody controls them
+    this.cinematic = null;
     this.zombies = [];
     this.bullets = [];
     this.enemyShots = [];
@@ -132,6 +135,14 @@ export class Game {
     this.titleAsleep = false;
     this.dipT = rand(4, 6);
     this.sfx.play('power', 0.7);
+  }
+
+  // The opening cinematic, then onDone (which starts the run, or goes back to the title).
+  playIntro(heroes, onDone) {
+    this.resetEntities();
+    this.titleAsleep = false;
+    this.state = 'cinematic';
+    this.cinematic = new Cinematic(this, heroes, onDone);
   }
 
   newRun(mode, charIds, controllers) {
@@ -800,6 +811,9 @@ export class Game {
       case 'title':
         this.updateAttract(dt);
         break;
+      case 'cinematic':
+        this.updateCinematic(dt);
+        break;
       case 'playing':
         this.updateWorld(dt);
         break;
@@ -826,6 +840,19 @@ export class Game {
     this.cam.x = mx * (0.5 + 0.42 * Math.sin(t));
     this.cam.y = my * (0.5 + 0.4 * Math.sin(t * 1.7 + 1));
     for (const z of this.zombies) z.update(dt);
+    this.rebuildGrid();
+    this.separate();
+    this.updateFires(dt);
+    this.particles.update(dt);
+    this.updateFlashes(dt);
+  }
+
+  // The cinematic runs the camera and the lights; the zombies just keep shambling around it.
+  updateCinematic(dt) {
+    this.cinematic.update(dt);
+    if (this.state !== 'cinematic') return; // it just ended and handed over
+    for (const z of this.zombies) if (!z.dead) z.update(dt);
+    this.zombies = this.zombies.filter((z) => !z.dead);
     this.rebuildGrid();
     this.separate();
     this.updateFires(dt);
@@ -895,7 +922,7 @@ export class Game {
     const w = this.waves;
     const live = this.state !== 'title' && (w.state === 'intro' || w.state === 'fight');
     const toward = (v, target, rate) => (v < target ? Math.min(target, v + rate * dt) : Math.max(target, v - rate * dt));
-    const dark = (live && w.special === 'blackout') || (this.state === 'title' && this.titleAsleep);
+    const dark = (live && w.special === 'blackout') || (this.state === 'title' && this.titleAsleep) || !!this.cinematic?.dark;
     this.lightsOut = toward(this.lightsOut || 0, dark ? 1 : 0, 0.5);
     this.fog = toward(this.fog || 0, live && w.special === 'fog' ? 1 : 0, 0.35);
     for (const l of this.map.lights) {
@@ -1459,7 +1486,9 @@ export class Game {
       }
     }
 
-    const ents = [...this.zombies, ...this.players];
+    for (const p of this.cast) pixEllipse(g, p.x - cx, p.y - cy + 2, 6, 2, 'rgba(0,0,0,0.4)');
+
+    const ents = [...this.zombies, ...this.players, ...this.cast];
     ents.sort((a, b) => a.y - b.y);
     for (const e of ents) e.draw(g, cx, cy);
 
@@ -1476,7 +1505,7 @@ export class Game {
     this.drawShotMarkers(g, cx, cy);
     for (const z of this.zombies) z.drawEyes(g, cx, cy);
     this.particles.drawOverlay(g, cx, cy);
-    if (this.state !== 'title') this.drawWorldUI(g, cx, cy);
+    if (this.state !== 'title' && this.state !== 'cinematic') this.drawWorldUI(g, cx, cy);
     this.lighting.drawVignette(g);
     if (this.hurtFlash > 0) {
       g.fillStyle = `rgba(150,0,0,${this.hurtFlash * 0.7})`;
@@ -1743,11 +1772,11 @@ export class Game {
       lights.push({ x, y, r: 56 * k, intensity: 0.8 });
       glows.push({ x, y, r: 42 * k, color: '#ff7a2a', alpha: 0.32 * k });
     }
-    for (const p of this.players) {
+    for (const p of [...this.players, ...this.cast]) {
       if (p.state === 'dead') continue;
       const x = p.x - cx, y = p.y - cy;
       lights.push({ x, y: y - 2, r: 44 - this.fog * 8, intensity: 0.6 });
-      if (p.alive) cones.push(buildCone(this.map, p.x, p.y - 3, p.aim, 0.42, 165 - this.fog * 70, cx, cy));
+      if (p.alive && p.flashlight !== false) cones.push(buildCone(this.map, p.x, p.y - 3, p.aim, 0.42, 165 - this.fog * 70, cx, cy));
       if (p.rage > 0) glows.push({ x, y: y - 6, r: 22, color: '#ff2a2a', alpha: 0.35 });
       for (const d of p.drones) glows.push({ x: d.x - cx, y: d.y - cy, r: 10, color: '#4fb2ff', alpha: 0.4 });
     }

@@ -43,6 +43,14 @@
 
     <div id="banner" class="hidden"><div id="banner-title"></div><div id="banner-sub"></div></div>
 
+    <!-- the opening cinematic (js/cinematic.js): letterbox, radio captions, fades and the title card -->
+    <div id="cine" class="hidden">
+      <div id="cine-fade"></div>
+      <div class="cine-bar"><span id="cine-skip"></span></div>
+      <div class="cine-bar bottom"><div id="cine-caption"></div></div>
+      <div id="cine-card"><div class="logo"><span class="logo-last">LAST</span><span class="logo-light off" id="cine-light">LIGHT</span></div></div>
+    </div>
+
     <section id="scr-title" class="screen asleep">
       <button class="btn icon fs-btn" data-action="fullscreen" aria-label="Fullscreen"><svg class="fs-icon" viewBox="0 0 9 9" shape-rendering="crispEdges" aria-hidden="true"><path class="fs-enter" d="M0 0h3v1H1v2H0zM6 0h3v3H8V1H6zM0 6h1v2h2v1H0zM8 6h1v3H6V8h2z"/><path class="fs-exit" d="M2 0h1v3H0V2h2zM6 0h1v2h2v1H6zM0 6h3v3H2V7H0zM6 6h3v1H7v2H6z"/></svg></button>
       <div class="logo"><span class="logo-last">LAST</span><span class="logo-light off" id="logo-light">LIGHT</span></div>
@@ -52,6 +60,7 @@
         <button class="btn" data-action="coop">2 PLAYERS · CO-OP</button>
         <button class="btn" data-action="guide">HOW TO PLAY</button>
         <button class="btn" data-action="records">RECORDS</button>
+        <button class="btn" data-action="intro">WATCH INTRO</button>
       </div>
       <div class="press-start"><span class="kbd-only">PRESS ANY KEY</span><span class="touch-only">TAP TO START</span></div>
       <div class="title-foot"><span id="title-best"></span><span id="title-sound"></span></div>

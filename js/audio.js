@@ -3,7 +3,7 @@ import { storage } from './utils.js';
 
 const MIN_GAP = {
   pistol: 0.03, rifle: 0.03, smg: 0.025, shotgun: 0.05, minigun: 0.02, hit: 0.03, zdie: 0.04,
-  groan: 0.35, buzz: 0.3, fizz: 0.1, flame: 0.09, equip: 0.1, explosion: 0.06, pickup: 0.05, hurt: 0.15, bark: 0.3, zap: 0.05, empty: 0.15, hatch: 0.08,
+  groan: 0.35, buzz: 0.3, fizz: 0.1, flame: 0.09, equip: 0.1, explosion: 0.06, pickup: 0.05, hurt: 0.15, bark: 0.3, zap: 0.05, empty: 0.15, hatch: 0.08, tick: 0.03,
 };
 
 export class Sfx {
@@ -204,6 +204,26 @@ export class Sfx {
         this._tone(t, 1.3, 0.5, 'sawtooth', 70, 38, 0.1);
         this._tone(t, 1.3, 0.3, 'sawtooth', 104, 50, 0.1);
         this._noise(t, 1.2, 0.5, 'lowpass', 500, 1, 150);
+        break;
+      // ---- the opening cinematic
+      case 'static': // radio static, with a few crackles in it
+        this._noise(t, 1.1, 0.35, 'bandpass', 1800, 0.7);
+        this._noise(t, 0.9, 0.2, 'highpass', 4500);
+        for (let i = 0; i < 5; i++) this._noise(t + r() * 0.9, 0.03, 0.4, 'highpass', 2500);
+        break;
+      case 'tick': // one character of the radio caption
+        this._tone(t, 0.025, 0.06, 'square', 1800 + r() * 400, 1200);
+        break;
+      case 'sting': // eyes open in the dark: a low swell under a sour high note
+        this._tone(t, 2.6, 0.35, 'sawtooth', 55, 52, 0.6);
+        this._tone(t, 2.6, 0.22, 'sawtooth', 58.3, 55, 0.6);
+        this._tone(t + 0.2, 2.2, 0.08, 'sine', 1244, 1180, 0.4);
+        this._noise(t, 2.4, 0.18, 'lowpass', 300, 1, 80);
+        break;
+      case 'click': // a flashlight switching on
+        this._noise(t, 0.03, 0.6, 'highpass', 3000);
+        this._tone(t, 0.04, 0.25, 'square', 2400, 1600);
+        this._noise(t + 0.05, 0.02, 0.3, 'highpass', 5000);
         break;
       case 'shriek': // the Broodmother rears back to fire
         this._tone(t, 0.7, 0.22, 'sawtooth', 520, 1400, 0.05);

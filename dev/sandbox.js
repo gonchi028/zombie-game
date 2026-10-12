@@ -75,7 +75,7 @@ let frames = 0, fps = 0, fpsT = performance.now();
 const render = game.render.bind(game);
 game.render = () => {
   render();
-  if (game.state !== 'title') drawOverlay(game.ctx);
+  if (game.state !== 'title' && game.state !== 'cinematic') drawOverlay(game.ctx);
   frames++;
   const now = performance.now();
   if (now - fpsT > 500) {
@@ -326,6 +326,11 @@ choiceRow(arena, Object.values(CHARACTERS).map((c) => [c.id, c.name]), (id) => o
   startArena();
 });
 row(arena, button('RESTART ARENA', startArena, 'wide'));
+row(arena, button('PLAY INTRO', () => {
+  game.ui.hideHUD();
+  game.playIntro([opts.char], startArena);
+}),
+  button('FORGET INTRO WAS SEEN', () => storage.set('ll_intro_seen', false)));
 
 // --- spawning
 const spawnSec = section('SPAWN');

@@ -7,6 +7,7 @@ import { Sfx } from './audio.js';
 import { Music } from './music.js';
 import { UI } from './ui.js';
 import { Game } from './game.js';
+import { storage } from './utils.js';
 
 buildAllSprites();
 
@@ -77,6 +78,7 @@ const ui = new UI({
   coop: () => ui.showSelect(2, startRun),
   guide: () => ui.showGuide(game.state === 'paused' ? 'pause' : 'title'),
   records: () => ui.showRecords(game.best),
+  intro: () => playIntro(['red'], toTitle),
   wake: () => {
     sfx.init();
     game.powerOn();
@@ -96,10 +98,27 @@ const ui = new UI({
   music: () => ui.refreshMusic(music.toggle()),
 });
 
+// The opening cinematic plays once, before your first run (WATCH INTRO on the title replays it).
 function startRun(mode, chars) {
   sfx.init();
+  if (!storage.get('ll_intro_seen', false)) playIntro(chars, () => beginRun(mode, chars));
+  else beginRun(mode, chars);
+}
+
+function beginRun(mode, chars) {
   game.newRun(mode, chars, controllersFor(mode));
   guardBack();
+}
+
+function playIntro(heroes, then) {
+  sfx.init();
+  ui.showScreen(null);
+  ui.hideHUD();
+  ui.hideBanner();
+  game.playIntro(heroes, () => {
+    storage.set('ll_intro_seen', true); // finished or skipped, either way it's been seen
+    then();
+  });
 }
 
 const touch = new TouchControls({ pause, fullscreen: fullscreenButton });

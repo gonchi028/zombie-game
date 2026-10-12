@@ -71,6 +71,10 @@ no dependencies. Open it in a browser and play.
   to the Home Screen, where it opens fullscreen and in landscape like an app.
 - **A built-in How to Play guide** covering every survivor, weapon, zombie, wave type, pickup and
   control.
+- **An opening cinematic** before your first run: a last radio broadcast, the city's power failing,
+  and the survivors around the last fire as eyes open in the dark. It's staged in the game's own
+  city with its own lighting and sprites. Skip it with any key, click or tap, or replay it with
+  WATCH INTRO on the title menu.
 - **A living title screen.** The city waits in the dark until you press a key, then the street lamps
   stutter back on. The LIGHT in the logo shares the city's power grid and cuts out with the lamps.
 - **Records** for your best wave and score, lifetime kills, bosses slain and time survived, plus
@@ -333,6 +337,7 @@ dev/                the sandbox's dev panel (never deployed)
 docs/screenshots/   images for this README
 js/
   main.js           boot, game loop, pause and menu wiring
+  cinematic.js      the opening cinematic: camera path, radio captions, timed cues
   game.js           world simulation and rendering: combat, pickups, weapon drops, flares, lighting
   map.js            city generator, baked tile art, props and colliders, flow-field pathfinding
   player.js         survivor movement, dash, two-slot loadout, firing, abilities, saws and drones
@@ -390,6 +395,10 @@ js/
   volume in `VOLUME`.
 - **New art.** Sprites are strings in `js/sprites.js`. Each character is a palette key, and `.` is
   transparent.
+- **Intro.** The opening cinematic is a list of timed cues in `js/cinematic.js`: the radio lines
+  are in `LINES`, the camera path is `this.path`, and everything else is in `this.cues`. It plays
+  once, then `ll_intro_seen` in `localStorage` remembers it. The sandbox can replay it and forget
+  that it was seen.
 - **Debugging.** The live game object is `window.__game` in the browser console.
 
 ## Sandbox

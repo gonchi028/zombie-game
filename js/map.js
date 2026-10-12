@@ -490,6 +490,7 @@ export class CityMap {
     });
     const tx = (x + 11) * S + 4, ty = (y + 14) * S;
     this.fires.push({ x: tx, y: ty - 4 });
+    this.camp = { x: tx, y: ty - 4 }; // the opening cinematic's last light (js/cinematic.js)
     this.addProp(tx - 4, ty - 5, 9, 9, (g) => drawBarrel(g, tx - 4, ty - 5, true));
     this.addLight((x + 1) * S, (y + 7) * S + 8, 50, '#ffd89a', 0.6);
     this.addLight((x + 15) * S, (y + 8) * S + 8, 50, '#ffd89a', 0.6, { broken: true });

@@ -133,6 +133,24 @@ h3 { font-family: var(--pixel); font-weight: normal; font-size: 0.7em; line-heig
   animation: blink 1.2s steps(1) infinite;
 }
 @keyframes blink { 50% { opacity: 0; } }
+
+/* ------------------------------------------------------------------ opening cinematic */
+#cine { position: absolute; inset: 0; pointer-events: none; }
+#cine.hidden { display: none; }
+#cine-fade { position: absolute; inset: 0; background: #000; }
+/* when it ends, the run (or the title) fades up out of the black */
+#cine.leaving #cine-fade { opacity: 0 !important; transition: opacity 0.8s ease-out; }
+#cine.leaving .cine-bar, #cine.leaving #cine-card { display: none; }
+.cine-bar { position: absolute; left: 0; right: 0; top: 0; height: 12%; background: #000; display: flex; align-items: center; justify-content: flex-end; padding: 0 1.2em; }
+.cine-bar.bottom { top: auto; bottom: 0; justify-content: center; padding: 0 2em; }
+#cine-skip { font-family: var(--pixel); font-size: 0.7em; letter-spacing: 0.15em; color: #5a5348; opacity: 0; animation: cine-in 0.6s 1.2s forwards; }
+@keyframes cine-in { to { opacity: 1; } }
+/* the radio: typed out, with a blinking cursor while it talks */
+#cine-caption { font-size: 1.75em; letter-spacing: 0.12em; color: #cfe6bf; text-shadow: 0 0 0.5em rgba(140, 255, 150, 0.35); text-align: center; }
+#cine-caption.typing::after { content: '_'; animation: blink 0.7s steps(1) infinite; }
+#cine-card { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; transition: opacity 0.7s; }
+#cine-card.show { opacity: 1; }
+#cine-card .logo-light { transition: none; }
 #scr-title.asleep .press-start { display: block; }
 #scr-title.asleep .menu, #scr-title.asleep .title-foot { visibility: hidden; }
 #scr-title.waking .menu .btn { animation: menu-in 0.35s ease-out backwards; }
@@ -140,7 +158,8 @@ h3 { font-family: var(--pixel); font-weight: normal; font-size: 0.7em; line-heig
 #scr-title.waking .menu .btn:nth-child(2) { animation-delay: 0.53s; }
 #scr-title.waking .menu .btn:nth-child(3) { animation-delay: 0.61s; }
 #scr-title.waking .menu .btn:nth-child(4) { animation-delay: 0.69s; }
-#scr-title.waking .title-foot { animation: fade-in 0.5s 0.8s ease-out backwards; }
+#scr-title.waking .menu .btn:nth-child(5) { animation-delay: 0.77s; }
+#scr-title.waking .title-foot { animation: fade-in 0.5s 0.88s ease-out backwards; }
 @keyframes menu-in { from { opacity: 0; transform: translateY(0.8em); } }
 .title-foot {
   position: absolute;
