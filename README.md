@@ -41,6 +41,7 @@ no dependencies. Open it in a browser and play.
 - [Under the hood](#under-the-hood)
 - [Project layout](#project-layout)
 - [Tweaking and modding](#tweaking-and-modding)
+- [Sandbox](#sandbox)
 
 ## Features
 
@@ -326,7 +327,8 @@ index.html          DOM shell: menus, HUD and the guide overlay the canvas
 manifest.webmanifest  lets phones install the game to the Home Screen (fullscreen, landscape)
 icons/              Home Screen icons, scaled up from the favicon's pixel zombie
 css/style.css       UI styling; 1 "game pixel" = var(--s)
-server.js           tiny static server for `npm start`
+server.js           tiny static server for `npm start`, plus the sandbox page at /dev
+dev/                the sandbox's dev panel (never deployed)
 .github/workflows/  pages.yml publishes the game to GitHub Pages on every push to main
 docs/screenshots/   images for this README
 js/
@@ -376,6 +378,10 @@ js/
   automatically. A brand-new ability also needs code in `useAbility()` in `js/game.js`. Thrown
   abilities that set something up where they land, like the med station and turret, go through
   `deploy()`.
+- **New zombie or boss.** Add an entry to `ZOMBIES` in `js/data.js` (a `boss` block makes it a boss:
+  HUD bar, banners, immune to flares), its art to `SPR` in `js/sprites.js`, and its eyes, motion
+  and behavior in `js/zombie.js`. Try it in the [sandbox](#sandbox) before adding it to a wave in
+  `js/waves.js`; it shows up in the sandbox's spawn list on its own.
 - **New upgrade.** Add an entry to `UPGRADES` in `js/upgrades.js` with an `apply(player)` function,
   and an optional `cond(player)` to control when it can be offered. Add its id to a `CATEGORY` list
   to give the card its color.
@@ -385,3 +391,30 @@ js/
 - **New art.** Sprites are strings in `js/sprites.js`. Each character is a palette key, and `.` is
   transparent.
 - **Debugging.** The live game object is `window.__game` in the browser console.
+
+## Sandbox
+
+A dev-only arena for trying out zombies and bosses. Run `npm start` and open
+[localhost:8080/dev](http://localhost:8080/dev). It's the real game with a panel beside it, and it
+starts you straight into an empty arena with no waves. Nothing in `js/` knows about it: `server.js`
+serves `index.html` with the panel from `dev/` added, and the panel hooks into the running game from
+the outside. The GitHub Pages deploy never copies `server.js` or `dev/`, so none of it ships.
+
+- **Spawn** any zombie type, including bosses and egg sacs, at the cursor or off-screen (to test
+  pathfinding), 1 to 25 at a time, with the health, speed and damage it would have on any wave.
+  Click a type and then click the map; Shift-click keeps placing.
+- **Inspect** a zombie with Alt-click: its health, AI state and every timer it's using, live. Each
+  timer has a **0** button that runs it out, so you can make a boss do a move right now.
+- **Overlay**: hitboxes (cyan is what walls and the crowd push against, pink is what bullets hit),
+  health bars, boss AI states, and a line to whoever the selected zombie is chasing (yellow when it
+  can see them).
+- **World**: slow motion or 2× speed, freeze the AI, turn the darkness off to look at the art, or
+  turn on a special wave's look (blackout, fog).
+- **Real waves**: play any wave exactly as it comes in a run, boss lineup included, then go back to
+  the arena.
+- **Player**: god mode, free abilities and flares, any gun or upgrade, and a hit log showing how
+  much damage you took, how fast, and from what. God mode still plays every hit, so the log shows
+  real numbers.
+
+Sandbox runs never touch your best score or Records. The panel remembers its settings; `` ` ``
+hides it.
