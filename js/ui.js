@@ -343,12 +343,12 @@ export class UI {
     if (this.current === 'scr-upgrade') this.showScreen(null);
   }
 
-  renderOwned(container, players) {
+  renderOwned(container, players, none = 'NO UPGRADES YET') {
     container.innerHTML = '';
     for (const p of players) {
       const ids = Object.keys(p.upgrades);
       const row = el('div', 'owned-row');
-      row.append(el('span', 'owned-label', ids.length ? `${p.char.name} BUILD` : `${p.char.name} · NO UPGRADES YET`));
+      row.append(el('span', 'owned-label', ids.length ? `${p.char.name} BUILD` : `${p.char.name} · ${none}`));
       for (const id of ids) {
         const u = UPGRADE_BY_ID[id];
         if (!u) continue;
@@ -385,12 +385,13 @@ export class UI {
     if (s.players.length > 1) {
       for (const p of s.players) {
         const r = el('div', 'stat small');
-        r.style.color = p.color;
-        r.append(el('span', 'k', `${p.name} KILLS`), el('span', 'v', fmtInt(p.kills)));
+        r.style.color = p.char.color;
+        r.append(el('span', 'k', `${p.char.name} KILLS`), el('span', 'v', fmtInt(p.kills)));
         box.append(r);
       }
     }
     box.append(el('div', `best ${s.newBest ? 'new' : ''}`, s.newBest ? '★ NEW BEST SCORE ★' : `BEST: WAVE ${s.best.wave} · ${fmtInt(s.best.score)}`));
+    this.renderOwned($('over-owned'), s.players, 'NO UPGRADES');
     this.showScreen('scr-over');
   }
 

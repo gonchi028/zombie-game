@@ -273,7 +273,7 @@ export class Game {
     });
     this.ui.showGameOver({
       wave, score, kills: this.stats.kills, time: this.stats.time, best: this.best, newBest,
-      players: this.players.map((p) => ({ name: p.char.name, color: p.char.color, kills: p.kills, upgrades: p.upgrades })),
+      players: this.players,
     });
   }
 
