@@ -139,23 +139,24 @@ export const CHARACTERS = {
   },
 };
 
-// Base zombie stats. HP/speed scale with the wave number in waves.js. Bosses carry a `boss` block
-// with their HUD name and the banners shown when they arrive and when they fall.
+// Base zombie stats. HP/speed scale with the wave number in waves.js. `name` shows in the guide, on the
+// boss bar and on the game-over screen. Bosses carry a `boss` block with the banners shown when they
+// arrive and when they fall.
 export const ZOMBIES = {
-  walker: { hp: 30, speed: 30, dmg: 10, r: 5, score: 10, anim: 5, mass: 1 },
-  runner: { hp: 22, speed: 58, dmg: 8, r: 5, score: 15, anim: 11, mass: 0.8 },
-  dog: { hp: 18, speed: 78, dmg: 7, r: 5, score: 15, anim: 12, mass: 0.7 },
-  brute: { hp: 150, speed: 21, dmg: 22, r: 8, score: 40, anim: 4, mass: 4, knockResist: 0.75 },
-  spitter: { hp: 40, speed: 24, dmg: 8, r: 5, score: 30, anim: 5, mass: 1 },
-  bloater: { hp: 55, speed: 19, dmg: 10, r: 7, score: 25, anim: 4, mass: 2 },
+  walker: { name: 'WALKER', hp: 30, speed: 30, dmg: 10, r: 5, score: 10, anim: 5, mass: 1 },
+  runner: { name: 'RUNNER', hp: 22, speed: 58, dmg: 8, r: 5, score: 15, anim: 11, mass: 0.8 },
+  dog: { name: 'ZOMBIE DOG', hp: 18, speed: 78, dmg: 7, r: 5, score: 15, anim: 12, mass: 0.7 },
+  brute: { name: 'BRUTE', hp: 150, speed: 21, dmg: 22, r: 8, score: 40, anim: 4, mass: 4, knockResist: 0.75 },
+  spitter: { name: 'SPITTER', hp: 40, speed: 24, dmg: 8, r: 5, score: 30, anim: 5, mass: 1 },
+  bloater: { name: 'BLOATER', hp: 55, speed: 19, dmg: 10, r: 7, score: 25, anim: 4, mass: 2 },
   boss: {
-    hp: 1600, speed: 23, dmg: 30, r: 13, score: 500, anim: 3, mass: 30, knockResist: 0.95,
-    boss: { name: 'THE ABOMINATION', arrives: 'HAS ENTERED THE CITY', slain: 'ABOMINATION SLAIN' },
+    name: 'THE ABOMINATION', hp: 1600, speed: 23, dmg: 30, r: 13, score: 500, anim: 3, mass: 30, knockResist: 0.95,
+    boss: { arrives: 'HAS ENTERED THE CITY', slain: 'ABOMINATION SLAIN' },
   },
   brood: {
-    hp: 1300, speed: 17, dmg: 20, r: 12, score: 600, anim: 3, mass: 30, knockResist: 0.95,
-    boss: { name: 'THE BROODMOTHER', arrives: 'CRAWLS OUT OF THE SEWERS', slain: 'BROODMOTHER SLAIN' },
+    name: 'THE BROODMOTHER', hp: 1300, speed: 17, dmg: 20, r: 12, score: 600, anim: 3, mass: 30, knockResist: 0.95,
+    boss: { arrives: 'CRAWLS OUT OF THE SEWERS', slain: 'BROODMOTHER SLAIN' },
   },
   // laid by the Broodmother: doesn't move, hatches runners unless it's popped first
-  egg: { hp: 34, speed: 0, dmg: 0, r: 5, score: 5, anim: 0, mass: 30, knockResist: 1 },
+  egg: { name: 'EGG SAC', hp: 34, speed: 0, dmg: 0, r: 5, score: 5, anim: 0, mass: 30, knockResist: 1 },
 };

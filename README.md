@@ -69,6 +69,8 @@ no dependencies. Open it in a browser and play.
   buttons appear as soon as you touch the screen. A fullscreen button sits on the title screen and next to
   the pause button. On iPhones, which don't allow fullscreen web pages, it shows how to add the game
   to the Home Screen, where it opens fullscreen and in landscape like an app.
+- **Know what hit you.** A red marker points at whatever just hurt you, even in the fog or the dark.
+  The game-over screen says what killed you and shows each survivor's build.
 - **A built-in How to Play guide** covering every survivor, weapon, zombie, wave type, pickup and
   control.
 - **An opening cinematic** before your first run: a last radio broadcast, the city's power failing,
@@ -78,7 +80,7 @@ no dependencies. Open it in a browser and play.
 - **A living title screen.** The city waits in the dark until you press a key, then the street lamps
   stutter back on. The LIGHT in the logo shares the city's power grid and cuts out with the lamps.
 - **Records** for your best wave and score, lifetime kills, bosses slain and time survived, plus
-  per-survivor stats and your favorite survivor.
+  per-survivor stats, your favorite survivor and the zombie that ended the most of your runs.
 
 ## Quick start
 
@@ -189,6 +191,9 @@ reacts to each.
 | **The Rush** | Wave 3 | Only runners and zombie dogs, 20% more of them, arriving almost twice as fast. The music speeds up. |
 | **Fog** | Wave 6 | Thick fog rolls in. You can only see clearly close to your survivor, and flashlights reach less far. The Motion Tracker still sees through it. |
 | **Heavy Hitters** | Wave 6 | Only brutes and bloaters. About a third as many zombies, but each one hits hard. |
+
+The upgrade screen tells you what the next wave is, a special wave or a boss, so you can pick for
+it (the Motion Tracker before a fog wave, say).
 
 Clearing a wave gives a score bonus. Before the next wave starts, every survivor gets a little
 health and ammo back, and fallen co-op partners rejoin. Your best wave and score are saved in the

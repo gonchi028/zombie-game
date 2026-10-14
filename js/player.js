@@ -7,7 +7,16 @@ const DASH_TIME = 0.16;
 const DASH_SPEED = 270;
 const BLEED_OUT = 30;
 const SWAP_TIME = 0.22;
+const HIT_MARK_TIME = 0.8; // how long the red marker pointing at whatever hit you stays up
 export const MAX_FLARES = 1;
+
+// What hurt a player, for "KILLED BY" on the game-over screen: a zombie itself, or something it
+// threw or left behind (acid, a blast), which carries `from` (the zombie type) and `how`.
+function hitCause(src) {
+  if (src?.def) return { type: src.type, how: 'hit' };
+  if (src?.from) return { type: src.from, how: src.how || 'acid' };
+  return null;
+}
 
 function defaultStats() {
   return {
@@ -82,6 +91,9 @@ export class Player {
     this.rage = 0;
     this.flares = 0;
     this.hurtFlash = 0;
+    this.hitMarks = []; // { a, t }: directions you were just hit from (drawn by game.js)
+    this.lastHit = null; // hitCause() of the latest hit
+    this.downedBy = null; // ...and of the hit that put you down
     this.recoilKick = 0;
     this.intent = null;
     this.firing = false;
@@ -179,6 +191,8 @@ export class Player {
     const game = this.game;
     const o = (this.intent = this.ctrl.read(this, game));
     this.hurtFlash = Math.max(0, this.hurtFlash - dt);
+    for (const m of this.hitMarks) m.t -= dt;
+    this.hitMarks = this.hitMarks.filter((m) => m.t > 0);
     this.recoilKick = Math.max(0, this.recoilKick - dt * 30);
     this.updatePose(dt);
     if (this.state === 'dead') return;
@@ -409,6 +423,15 @@ export class Player {
     game.sound('hurt', this.x, this.y);
     game.shake(4);
     const a = src ? Math.atan2(this.y - src.y, this.x - src.x) : rand(0, TAU);
+    this.lastHit = hitCause(src) || this.lastHit;
+    // point back at where it came from (for acid: who threw it), unless that's right underneath you
+    // (a pool you're standing in)
+    const fx = src?.ox ?? src?.x, fy = src?.oy ?? src?.y;
+    if (src && dist2(this.x, this.y, fx, fy) > 8 * 8) {
+      const at = Math.atan2(fy - this.y, fx - this.x);
+      this.hitMarks = this.hitMarks.filter((m) => Math.abs(Math.atan2(Math.sin(m.a - at), Math.cos(m.a - at))) > 0.5);
+      this.hitMarks.push({ a: at, t: HIT_MARK_TIME });
+    }
     game.particles.blood(this.x, this.y - 4, a, 8);
     this.vx += Math.cos(a) * 90;
     this.vy += Math.sin(a) * 90;
@@ -426,6 +449,7 @@ export class Player {
         return;
       }
       this.hp = 0;
+      this.downedBy = this.lastHit;
       game.playerDown(this);
     }
   }

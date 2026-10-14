@@ -71,6 +71,13 @@ export class WaveManager {
     return ids.length ? choice(ids) : null;
   }
 
+  // What wave n will be, decided ahead of time so the upgrade screen can show it before it starts.
+  // { n, special: id or null, bosses: [types] }
+  preview(n) {
+    if (this.planned?.n !== n) this.planned = { n, special: this.pickSpecial(n), bosses: n % BOSS_EVERY === 0 ? bossLineup(n) : [] };
+    return this.planned;
+  }
+
   get isBossWave() {
     return this.wave % BOSS_EVERY === 0;
   }
@@ -83,7 +90,7 @@ export class WaveManager {
     this.wave = n;
     this.state = 'intro';
     this.timer = 3;
-    this.special = this.pickSpecial(n);
+    this.special = this.preview(n).special;
     if (this.special) this.lastSpecial = this.special;
     const sp = SPECIALS[this.special] || {};
     const base = (10 + n * 5 + n * n * 0.25) * (players > 1 ? 1.5 : 1);

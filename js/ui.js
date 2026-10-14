@@ -1,5 +1,5 @@
 // DOM overlay: title, character select, upgrade cards, pause, game over, HUD and banners.
-import { CHARACTERS, WEAPONS } from './data.js';
+import { CHARACTERS, WEAPONS, ZOMBIES } from './data.js';
 import { SPR, icon } from './sprites.js';
 import { UPGRADE_BY_ID, RARITY, CATEGORY } from './upgrades.js';
 import { PLAYER_COLORS } from './config.js';
@@ -30,6 +30,19 @@ function cardDesc(u) {
   const box = el('div', 'card-desc trade');
   box.append(el('div', 'pro', m[1]), el('div', 'con', m[2]));
   return box;
+}
+
+// What ended a run: "RUNNER", "SPITTER ACID", "THE ABOMINATION"...
+function causeLabel(c) {
+  const name = ZOMBIES[c.type]?.name || 'SOMETHING';
+  return c.how === 'acid' ? `${name.replace(/^THE /, '')} ACID` : name;
+}
+
+// "THE ABOMINATION x2 + THE BROODMOTHER"
+function bossNames(types) {
+  const counts = new Map();
+  for (const t of types) counts.set(t, (counts.get(t) || 0) + 1);
+  return [...counts].map(([t, n]) => (n > 1 ? `${ZOMBIES[t].name} x${n}` : ZOMBIES[t].name)).join(' + ');
 }
 
 const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -162,6 +175,9 @@ export class UI {
       card.append(portrait, info);
       box.append(card);
     }
+    // the zombie that ended the most runs
+    const [nemesis, ended] = Object.entries(r.causes).sort((a, b) => b[1] - a[1])[0] || [];
+    $('rec-nemesis').textContent = nemesis ? `DEADLIEST: ${ZOMBIES[nemesis]?.name || '?'} · ENDED ${ended} OF ${r.runs} RUN${r.runs > 1 ? 'S' : ''}` : '';
     $('rec-hint').textContent = r.runs ? (this.touch ? '' : 'ESC BACK') : 'SURVIVE AS LONG AS YOU CAN. YOUR RECORDS SHOW UP HERE AFTER YOUR FIRST RUN.';
     this.showScreen('scr-records');
   }
@@ -294,13 +310,24 @@ export class UI {
     else this.h.back();
   }
 
-  showUpgrade(player, choices, wave, rerolls, onPick, onReroll) {
+  // `next`: the coming wave from WaveManager.preview(), so you can pick for it (the tracker before fog...)
+  showUpgrade(player, choices, wave, next, rerolls, onPick, onReroll) {
     this.onReroll = onReroll;
     const coop = player.game.players.length > 1;
     $('up-title').textContent = `WAVE ${wave} CLEARED`;
     const sub = $('up-sub');
     sub.textContent = `${coop ? `PLAYER ${player.index + 1} · ` : ''}${player.char.name} — PICK ONE`;
     sub.style.color = coop ? PLAYER_COLORS[player.index] : player.char.color;
+    const nx = $('up-next');
+    nx.innerHTML = '';
+    const sp = SPECIALS[next.special];
+    const [what, color] = next.bosses.length ? [`BOSS: ${bossNames(next.bosses)}`, '#ff4a3a'] : sp ? [`${sp.name} — ${sp.sub}`, sp.color] : [];
+    nx.append(`NEXT: WAVE ${next.n}`);
+    if (what) {
+      const w = el('span', '', what);
+      w.style.color = color;
+      nx.append(' · ', w);
+    }
     const wrap = $('up-cards');
     wrap.innerHTML = '';
     choices.forEach((u, i) => {
@@ -377,16 +404,18 @@ export class UI {
       ['SCORE', fmtInt(s.score)],
       ['TIME SURVIVED', fmtTime(s.time)],
     ];
+    const coop = s.players.length > 1;
+    if (!coop && s.cause) rows.push(['KILLED BY', causeLabel(s.cause)]);
     for (const [k, v] of rows) {
       const r = el('div', 'stat');
       r.append(el('span', 'k', k), el('span', 'v', String(v)));
       box.append(r);
     }
-    if (s.players.length > 1) {
+    if (coop) {
       for (const p of s.players) {
         const r = el('div', 'stat small');
         r.style.color = p.char.color;
-        r.append(el('span', 'k', `${p.char.name} KILLS`), el('span', 'v', fmtInt(p.kills)));
+        r.append(el('span', 'k', `${p.char.name} · ${fmtInt(p.kills)} KILLS`), el('span', 'v', p.downedBy ? `DOWNED BY ${causeLabel(p.downedBy)}` : ''));
         box.append(r);
       }
     }
@@ -495,7 +524,7 @@ export class UI {
     const boss = game.bossRef && !game.bossRef.dead ? game.bossRef : null;
     this.set('bossvis', $('hud-boss'), 'class', boss ? boss.type : 'hidden'); // the class tints the bar per boss
     if (boss) {
-      this.set('bossname', $('hud-boss-name'), 'text', boss.def.boss.name);
+      this.set('bossname', $('hud-boss-name'), 'text', boss.def.name);
       this.set('bossfill', $('hud-boss-fill'), 'width', `${Math.max(0, (boss.hp / boss.maxHp) * 100).toFixed(1)}%`);
     }
 

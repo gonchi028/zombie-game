@@ -446,13 +446,17 @@ kbd {
 
 /* ------------------------------------------------------------------ game over / controls */
 #over-stats { display: grid; gap: 0.35em; min-width: 26em; margin: 0.5em 0 0.8em; }
-.stat { display: flex; justify-content: space-between; font-family: var(--pixel); font-size: 0.75em; padding: 0.5em 0.8em; background: rgba(20, 18, 26, 0.8); }
+.stat { display: flex; justify-content: space-between; gap: 1.5em; font-family: var(--pixel); font-size: 0.75em; padding: 0.5em 0.8em; background: rgba(20, 18, 26, 0.8); }
 .stat.small { font-size: 0.6em; }
 .stat .k { color: var(--muted); }
 .best { font-family: var(--pixel); font-size: 0.6em; color: var(--muted); margin-top: 0.6em; }
 .best.new { color: #ffd24a; animation: flicker 1.2s infinite; }
 
+/* the coming wave, under "PICK ONE" on the upgrade screen */
+.up-next { font-family: var(--pixel); font-size: 0.5em; color: var(--muted); letter-spacing: 0.05em; margin-top: -0.6em; }
+
 /* ------------------------------------------------------------------ records */
+.rec-nemesis { font-family: var(--pixel); font-size: 0.5em; color: #ff8a6a; min-height: 1em; }
 .rec-tiles, .rec-survivors { display: grid; grid-template-columns: repeat(4, 13.5em); gap: 0.5em; }
 .rec-tile {
   display: flex;

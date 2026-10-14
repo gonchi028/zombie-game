@@ -474,7 +474,7 @@ function refresh() {
   levelLabel.textContent = opts.level;
   const n = opts.level;
   lineup.textContent = n % BOSS_EVERY === 0
-    ? `Wave ${n} is a boss wave: ${bossLineup(n).map((t) => ZOMBIES[t].boss.name).join(' + ')}.`
+    ? `Wave ${n} is a boss wave: ${bossLineup(n).map((t) => ZOMBIES[t].name).join(' + ')}.`
     : `Wave ${n}: regular wave. Boss waves are every ${BOSS_EVERY}th.`;
 }
 

@@ -107,6 +107,7 @@ export class Game {
     this.waves = new WaveManager(this);
     this.stats = { kills: 0, score: 0, time: 0, bosses: 0 };
     this.bossRef = null;
+    this.lastDowned = null;
     this.hurtFlash = 0;
     this.slowmo = 1;
   }
@@ -203,7 +204,8 @@ export class Game {
     let rerolls = 1;
     const show = () => {
       const choices = rollChoices(p, this.waves.wave);
-      this.ui.showUpgrade(p, choices, this.waves.wave, rerolls, (u) => {
+      const next = this.waves.preview(this.waves.wave + 1);
+      this.ui.showUpgrade(p, choices, this.waves.wave, next, rerolls, (u) => {
         p.upgrades[u.id] = (p.upgrades[u.id] || 0) + 1;
         u.apply(p);
         this.sfx.play('powerup', 0.8);
@@ -239,6 +241,7 @@ export class Game {
 
   playerDown(p) {
     p.goDown();
+    this.lastDowned = p; // the run ends on whatever put the last survivor down
     this.sfx.play('down', 0.8);
     this.particles.text(p.x, p.y - 20, 'DOWN!', '#ff5a4e', 1.2);
     if (!this.players.some((o) => o.alive)) this.gameOver();
@@ -263,16 +266,17 @@ export class Game {
     const wave = this.waves.wave;
     const score = Math.floor(this.stats.score);
     const newBest = score > this.best.score;
+    const cause = this.lastDowned?.downedBy || null;
     if (newBest || wave > this.best.wave) {
       this.best = { wave: Math.max(wave, this.best.wave), score: Math.max(score, this.best.score) };
       storage.set('ll_best', this.best);
     }
     recordRun({
-      wave, kills: this.stats.kills, time: this.stats.time, bosses: this.stats.bosses,
+      wave, kills: this.stats.kills, time: this.stats.time, bosses: this.stats.bosses, cause: cause?.type,
       players: this.players.map((p) => ({ id: p.char.id, kills: p.kills })),
     });
     this.ui.showGameOver({
-      wave, score, kills: this.stats.kills, time: this.stats.time, best: this.best, newBest,
+      wave, score, kills: this.stats.kills, time: this.stats.time, best: this.best, newBest, cause,
       players: this.players,
     });
   }
@@ -318,7 +322,7 @@ export class Game {
     const boss = z.def.boss;
     if (boss && this.state !== 'title') {
       this.bossRef = z;
-      this.ui.banner(boss.name, boss.arrives, z.type === 'brood' ? '#c8f05a' : '#ff4a3a');
+      this.ui.banner(z.def.name, boss.arrives, z.type === 'brood' ? '#c8f05a' : '#ff4a3a');
       this.sfx.play('roar', 1);
       this.shake(5);
     }
@@ -521,7 +525,7 @@ export class Game {
     const z0 = o.z0 ?? 8;
     const s = {
       kind: 'acid', x: z.x, y: z.y, z: z0, vx: (tx - z.x) / T, vy: (ty - z.y) / T, vz: (0.5 * G * T * T - z0) / T,
-      tx, ty, t: 0, T, poolR: 14, poolT: 3.5, dmg: 0, dead: false, ...o,
+      tx, ty, t: 0, T, poolR: 14, poolT: 3.5, dmg: 0, dead: false, from: z.type, ox: z.x, oy: z.y, ...o,
     };
     this.enemyShots.push(s);
     return s;
@@ -685,7 +689,7 @@ export class Game {
     this.sound('zdie', z.x, z.y, 0.8);
 
     if (z.type === 'bloater') {
-      this.explode(z.x, z.y - 4, 44, 40 * (this.waves.scale?.dmg || 1), null, { hurtPlayers: true, acid: true });
+      this.explode(z.x, z.y - 4, 44, 40 * (this.waves.scale?.dmg || 1), null, { hurtPlayers: true, acid: true, from: z.type });
     }
     if (boss) {
       // the HUD bar moves on to the next boss still standing, if any
@@ -749,7 +753,7 @@ export class Game {
       }
       if (o.hurtPlayers) {
         for (const p of this.players) {
-          if (p.alive && dist2(x, y, p.x, p.y) < (r + p.r) ** 2) p.hurt(dmg * 0.6, { x, y });
+          if (p.alive && dist2(x, y, p.x, p.y) < (r + p.r) ** 2) p.hurt(dmg * 0.6, { x, y, from: o.from, how: 'blast' });
         }
       }
     }
@@ -1149,7 +1153,7 @@ export class Game {
         continue;
       }
       for (const p of this.players) if (p.alive && dist2(p.x, p.y, s.x, s.y) < 12 * 12) p.hurt(s.dmg, s);
-      this.pools.push({ kind: 'acid', x: s.x, y: s.y, r: s.poolR, t: s.poolT, life: s.poolT, dps: s.dmg });
+      this.pools.push({ kind: 'acid', x: s.x, y: s.y, r: s.poolR, t: s.poolT, life: s.poolT, dps: s.dmg, from: s.from });
       this.particles.gibs(s.x, s.y, 6, ACID);
       this.sound('splat', s.x, s.y);
     }
@@ -1871,6 +1875,7 @@ export class Game {
         continue;
       }
       if (!p.alive) continue;
+      this.drawHitMarks(g, p, x, y);
       const w = p.weapon;
       if (w.reloadT > 0) {
         const k = 1 - w.reloadT / w.reloadTime();
@@ -1926,6 +1931,22 @@ export class Game {
       }
     }
     this.tracker.draw(g, this);
+  }
+
+  // Red arcs around a survivor that point at whatever just hurt them (a spitter in the fog, a dog
+  // from behind). They fade out over HIT_MARK_TIME (player.js).
+  drawHitMarks(g, p, x, y) {
+    for (const m of p.hitMarks) {
+      g.globalAlpha = Math.min(1, m.t * 2.5);
+      for (const [r, color] of [[15, '#5a0a08'], [13, '#ff3a2a'], [14, '#ff3a2a']]) {
+        g.fillStyle = color;
+        const span = r === 15 ? 0.6 : 0.5;
+        for (let a = -span; a <= span; a += 0.8 / r) {
+          g.fillRect(Math.round(x + Math.cos(m.a + a) * r), Math.round(y - 4 + Math.sin(m.a + a) * r * 0.85), 1, 1);
+        }
+      }
+    }
+    g.globalAlpha = 1;
   }
 
   drawCrosshairs(g, cx, cy) {

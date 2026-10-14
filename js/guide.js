@@ -1,6 +1,6 @@
 // "How to play" field guide: a tabbed screen built from the game's own data and sprites,
 // so weapon stats, zombies and pickups shown here never drift from what's in the game.
-import { CHARACTERS, WEAPONS } from './data.js';
+import { CHARACTERS, WEAPONS, ZOMBIES as ZOMBIE_DATA } from './data.js';
 import { SPR, icon } from './sprites.js';
 import { CATEGORY } from './upgrades.js';
 import { SPECIALS, BOSS_EVERY, SPECIAL_EVERY } from './waves.js';
@@ -9,15 +9,15 @@ import { el, pix } from './dom.js';
 const TIER_WAVE = { 1: 1, 2: 3, 3: 5 }; // matches pickDropWeapon() in game.js
 
 const ZOMBIES = [
-  { id: 'walker', name: 'WALKER', wave: 1, desc: 'Slow and stubborn. The bulk of every wave.' },
-  { id: 'runner', name: 'RUNNER', wave: 2, desc: 'Fast and fragile. Keep moving.' },
-  { id: 'dog', name: 'ZOMBIE DOG', wave: 3, desc: 'Lunges from range. Hard to outrun.' },
-  { id: 'spitter', name: 'SPITTER', wave: 4, desc: 'Keeps its distance and lobs acid.' },
-  { id: 'brute', name: 'BRUTE', wave: 4, desc: 'Huge health. Shrugs off knockback.' },
-  { id: 'bloater', name: 'BLOATER', wave: 6, desc: 'Explodes up close and hurts everyone nearby. Pop it early.' },
-  { id: 'boss', name: 'THE ABOMINATION', wave: 5, boss: true, desc: 'Charges, slams and summons. Bait it into a wall to stun it.' },
+  { id: 'walker', wave: 1, desc: 'Slow and stubborn. The bulk of every wave.' },
+  { id: 'runner', wave: 2, desc: 'Fast and fragile. Keep moving.' },
+  { id: 'dog', wave: 3, desc: 'Lunges from range. Hard to outrun.' },
+  { id: 'spitter', wave: 4, desc: 'Keeps its distance and lobs acid.' },
+  { id: 'brute', wave: 4, desc: 'Huge health. Shrugs off knockback.' },
+  { id: 'bloater', wave: 6, desc: 'Explodes up close and hurts everyone nearby. Pop it early.' },
+  { id: 'boss', wave: 5, boss: true, desc: 'Charges, slams and summons. Bait it into a wall to stun it.' },
   {
-    id: 'brood', name: 'THE BROODMOTHER', wave: 10, boss: true, extra: 'egg',
+    id: 'brood', wave: 10, boss: true, extra: 'egg',
     desc: 'Hangs back and lobs acid. Her egg sacs hatch runners, so pop them first. Corner her and she sprays acid.',
   },
 ];
@@ -209,7 +209,7 @@ function zombiesTab() {
     const art = el('div', 'g-art');
     art.append(pix(img, 2));
     if (z.extra) art.append(pix(SPR[z.extra][0].frames[0], 2));
-    c.append(art, el('div', 'g-title', z.name), el('div', 'g-desc', z.desc));
+    c.append(art, el('div', 'g-title', ZOMBIE_DATA[z.id].name), el('div', 'g-desc', z.desc));
     grid.append(c);
   }
   return grid;
