@@ -19,6 +19,7 @@ const G = 420; // gravity for thrown things
 // Road flare: a held item that pulls nearby zombies off the players, then pops.
 const FLARE_TIME = 6.5; // seconds it burns (including the throw)
 const LURE_R = 170; // zombies this close (with line of sight) chase the flare instead
+const FIRE_TICK = 0.25; // seconds between damage ticks of a Molotov's burning pool
 // Weapon drops: guns that appear around the city over time.
 const DROP_EVERY = [18, 30]; // seconds between drops (random in range)
 const FIRST_DROP = 7; // the first one comes early so players learn about it
@@ -1348,12 +1349,17 @@ export class Game {
           const a = rand(0, TAU), d = Math.sqrt(Math.random()) * pool.r;
           this.particles.fire(pool.x + Math.cos(a) * d, pool.y + Math.sin(a) * d * 0.7, 1, 30);
         }
+        // burns in ticks, so zombies standing in it flash and flinch like any other hit
+        pool.tickT = (pool.tickT ?? 0) - dt;
+        if (pool.tickT > 0) continue;
+        pool.tickT += FIRE_TICK;
         for (const z of this.zombiesNear(pool.x, pool.y, pool.r + 10)) {
           if (z.dead) continue;
-          if (dist2(z.x, z.y, pool.x, pool.y) < (pool.r + z.r) ** 2) {
-            z.hp -= pool.dps * dt;
+          const dx = z.x - pool.x, dy = z.y - pool.y;
+          if (dx * dx + dy * dy < (pool.r + z.r) ** 2) {
+            const d = Math.hypot(dx, dy) || 1;
             this.ignite(z, 1.5, pool.dps * 0.35, pool.owner);
-            if (z.hp <= 0) this.killZombie(z, pool.owner);
+            this.damageZombie(z, pool.dps * FIRE_TICK, { owner: pool.owner, ax: dx / d, ay: dy / d, noProc: true });
           }
         }
       } else {
