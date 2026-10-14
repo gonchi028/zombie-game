@@ -1,3 +1,15 @@
+/* The two pixel fonts ship with the game (fonts/, latin subset, SIL Open Font License), so it works offline. */
+@font-face {
+  font-family: 'Press Start 2P';
+  src: url(../fonts/PressStart2P.woff2) format('woff2');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'VT323';
+  src: url(../fonts/VT323.woff2) format('woff2');
+  font-display: swap;
+}
+
 :root {
   /* one "game pixel" in CSS units: the 480x270 canvas is fit into the window */
   --s: calc(min(100vw, 177.7778vh) / 480);

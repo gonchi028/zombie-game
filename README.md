@@ -69,6 +69,8 @@ no dependencies. Open it in a browser and play.
   buttons appear as soon as you touch the screen. A fullscreen button sits on the title screen and next to
   the pause button. On iPhones, which don't allow fullscreen web pages, it shows how to add the game
   to the Home Screen, where it opens fullscreen and in landscape like an app.
+- **Plays offline.** After your first visit the whole game is cached, so it runs with no connection,
+  from the browser or the Home Screen.
 - **Know what hit you.** A red marker points at whatever just hurt you, even in the fog or the dark.
   The game-over screen says what killed you and shows each survivor's build.
 - **A built-in How to Play guide** covering every survivor, weapon, zombie, wave type, pickup and
@@ -309,7 +311,12 @@ how to add Last Light to the Home Screen instead: tap Share, then **Add to Home 
 ## Under the hood
 
 - **No build step and no dependencies.** Plain ES modules, a `<canvas>` and a little DOM for the
-  menus and HUD. `server.js` is a ~30-line static file server.
+  menus and HUD. The two pixel fonts ship in `fonts/`, so nothing loads from anywhere else.
+  `server.js` is a ~30-line static file server.
+- **Offline.** `sw.js` is a service worker that keeps a copy of every file the game loads. It tries
+  the network first, so a new deploy reaches players straight away, and falls back to the copy when
+  there's no connection. There's no file list to maintain: on the first visit, `main.js` hands it
+  the files the page already loaded.
 - **Pixel-perfect rendering.** The world renders to a 480×270 canvas scaled up with nearest-neighbor
   filtering. The DOM UI is sized in the same "game pixels" (`var(--s)` in the CSS), so the whole
   game stays crisp at any window size.
@@ -334,7 +341,9 @@ how to add Last Light to the Home Screen instead: tap Share, then **Add to Home 
 ```
 index.html          DOM shell: menus, HUD and the guide overlay the canvas
 manifest.webmanifest  lets phones install the game to the Home Screen (fullscreen, landscape)
+sw.js               service worker: caches the game so it plays offline
 icons/              Home Screen icons, scaled up from the favicon's pixel zombie
+fonts/              Press Start 2P and VT323 (latin subset) with their SIL Open Font Licenses
 css/style.css       UI styling; 1 "game pixel" = var(--s)
 server.js           tiny static server for `npm start`, plus the sandbox page at /dev
 dev/                the sandbox's dev panel (never deployed)

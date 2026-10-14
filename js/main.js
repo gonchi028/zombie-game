@@ -187,6 +187,15 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 
+// Offline play (sw.js). The worker starts after this page has loaded its files, so hand it the list
+// to cache right away; otherwise offline play would only work from the second visit on.
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then((reg) => {
+    const urls = [location.href.split('#')[0], ...performance.getEntriesByType('resource').map((e) => e.name)];
+    reg.active?.postMessage({ type: 'precache', urls });
+  }).catch(() => {});
+}
+
 // Handy for debugging from the console.
 window.__game = game;
 window.__music = music;

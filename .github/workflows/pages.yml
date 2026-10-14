@@ -29,7 +29,7 @@ jobs:
       - name: Collect the site
         run: |
           mkdir -p _site/docs/screenshots
-          cp -r index.html manifest.webmanifest css js icons _site/
+          cp -r index.html manifest.webmanifest sw.js css js icons fonts _site/
           # link previews (og:image in index.html) point at this screenshot
           cp docs/screenshots/gameplay.png _site/docs/screenshots/
 
