@@ -30,6 +30,32 @@ export function buildCone(map, x, y, ang, spread, range, camX, camY) {
   return { sx: x - camX, sy: y - camY, range, outer, inner };
 }
 
+// Lights and glows are radial gradients. Building a new gradient for every light on every frame is slow
+// on phones (each burning zombie is a light), so each kind is drawn once into a sprite that gets
+// stretched to the light's size and faded with globalAlpha, which looks the same.
+const SPRITE_R = 64;
+function gradientSprite(stops) {
+  const [c, g] = makeCanvas(SPRITE_R * 2, SPRITE_R * 2);
+  const grd = g.createRadialGradient(SPRITE_R, SPRITE_R, 0, SPRITE_R, SPRITE_R, SPRITE_R);
+  for (const [at, color] of stops) grd.addColorStop(at, color);
+  g.fillStyle = grd;
+  g.fillRect(0, 0, SPRITE_R * 2, SPRITE_R * 2);
+  return c;
+}
+const glowSprites = new Map();
+function glowSprite(color) {
+  let c = glowSprites.get(color);
+  if (!c) glowSprites.set(color, (c = gradientSprite([[0, rgba(color, 1)], [1, rgba(color, 0)]])));
+  return c;
+}
+
+// Stamp a gradient sprite at (x, y) with radius r. Smoothing on: a stretched gradient must not band.
+function stamp(g, img, x, y, r, alpha) {
+  if (alpha <= 0) return;
+  g.globalAlpha = Math.min(1, alpha);
+  g.drawImage(img, x - r, y - r, r * 2, r * 2);
+}
+
 function fillPoly(g, pts) {
   g.beginPath();
   g.moveTo(pts[0], pts[1]);
@@ -41,6 +67,8 @@ function fillPoly(g, pts) {
 export class Lighting {
   constructor() {
     [this.canvas, this.ctx] = makeCanvas(VIEW_W, VIEW_H);
+    // erases the darkness: full strength in the middle, 65% at 0.45 of the radius, gone at the edge
+    this.light = gradientSprite([[0, 'rgba(0,0,0,1)'], [0.45, 'rgba(0,0,0,0.65)'], [1, 'rgba(0,0,0,0)']]);
     [this.vignette] = makeCanvas(VIEW_W, VIEW_H);
     const v = this.vignette.getContext('2d');
     const grd = v.createRadialGradient(VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.35, VIEW_W / 2, VIEW_H / 2, VIEW_W * 0.62);
@@ -59,15 +87,13 @@ export class Lighting {
     g.fillRect(0, 0, VIEW_W, VIEW_H);
     g.globalCompositeOperation = 'destination-out';
 
+    g.imageSmoothingEnabled = true;
     for (const l of lights) {
       if (l.x < -l.r || l.y < -l.r || l.x > VIEW_W + l.r || l.y > VIEW_H + l.r) continue;
-      const grd = g.createRadialGradient(l.x, l.y, 0, l.x, l.y, l.r);
-      grd.addColorStop(0, `rgba(0,0,0,${l.intensity})`);
-      grd.addColorStop(0.45, `rgba(0,0,0,${l.intensity * 0.65})`);
-      grd.addColorStop(1, 'rgba(0,0,0,0)');
-      g.fillStyle = grd;
-      g.fillRect(l.x - l.r, l.y - l.r, l.r * 2, l.r * 2);
+      stamp(g, this.light, l.x, l.y, l.r, l.intensity);
     }
+    g.globalAlpha = 1;
+    g.imageSmoothingEnabled = false;
 
     for (const c of cones) {
       const grd = g.createRadialGradient(c.sx, c.sy, 2, c.sx, c.sy, c.range);
@@ -93,13 +119,10 @@ export class Lighting {
       target.fillStyle = grd;
       fillPoly(target, c.inner);
     }
+    target.imageSmoothingEnabled = true;
     for (const l of glows) {
       if (l.x < -l.r || l.y < -l.r || l.x > VIEW_W + l.r || l.y > VIEW_H + l.r) continue;
-      const grd = target.createRadialGradient(l.x, l.y, 0, l.x, l.y, l.r);
-      grd.addColorStop(0, rgba(l.color, l.alpha));
-      grd.addColorStop(1, rgba(l.color, 0));
-      target.fillStyle = grd;
-      target.fillRect(l.x - l.r, l.y - l.r, l.r * 2, l.r * 2);
+      stamp(target, glowSprite(l.color), l.x, l.y, l.r, l.alpha);
     }
     target.restore();
   }
