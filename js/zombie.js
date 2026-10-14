@@ -245,7 +245,7 @@ export class Zombie {
           speed = 0;
           if (Math.floor(this.fuse * 12) % 2 === 0) this.flash = 0.05;
           if (this.fuse <= 0) {
-            game.killZombie(this, null);
+            game.killZombie(this, null, true);
             return;
           }
         } else if (tgt && d < 24) this.fuse = 0.6;

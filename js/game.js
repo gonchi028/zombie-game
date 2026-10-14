@@ -652,11 +652,14 @@ export class Game {
     }
   }
 
-  killZombie(z, owner) {
+  // `selfDestruct`: a bloater that blew itself up next to you. It still explodes, but nobody killed
+  // it, so it pays no score and drops nothing.
+  killZombie(z, owner, selfDestruct = false) {
     if (z.dead) return;
     z.dead = true;
     const wave = Math.max(1, this.waves.wave);
-    if (this.state !== 'title') {
+    const counts = this.state !== 'title' && !selfDestruct;
+    if (counts) {
       this.waves.killed++;
       this.stats.kills++;
       this.stats.score += z.def.score * (1 + wave * 0.1);
@@ -699,7 +702,7 @@ export class Game {
       this.spawnPickup('health', z.x - 8, z.y);
       return;
     }
-    if (this.state !== 'title') this.rollDrop(z);
+    if (counts) this.rollDrop(z);
   }
 
   rollDrop(z) {
