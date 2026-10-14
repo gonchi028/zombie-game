@@ -8,6 +8,7 @@ import { Music } from './music.js';
 import { UI } from './ui.js';
 import { Game } from './game.js';
 import { storage } from './utils.js';
+import { settings, saveSettings } from './settings.js';
 
 buildAllSprites();
 
@@ -78,6 +79,19 @@ const ui = new UI({
   coop: () => ui.showSelect(2, startRun),
   guide: () => ui.showGuide(game.state === 'paused' ? 'pause' : 'title'),
   records: () => ui.showRecords(game.best),
+  settings: () => ui.showSettings(game.state === 'paused' ? 'pause' : 'title'),
+  // Settings sliders (0..1). Turning a muted sound or switched-off music up switches it back on.
+  volume: (kind, v) => {
+    settings[kind] = v;
+    saveSettings();
+    if (kind === 'sfx') {
+      sfx.setVolume(v);
+      if (sfx.muted && v > 0) ui.refreshMute(sfx.toggleMute());
+    } else {
+      music.fade();
+      if (!music.enabled && v > 0) ui.refreshMusic(music.toggle());
+    }
+  },
   intro: () => playIntro(['red'], toTitle),
   wake: () => {
     sfx.init();
@@ -146,7 +160,7 @@ window.addEventListener('keydown', unlock);
 
 window.addEventListener('keydown', (e) => {
   if (e.code === 'Escape' || e.code === 'KeyP') {
-    if (ui.current === 'scr-guide') return; // the guide handles its own ESC (back to pause)
+    if (ui.submenu) return; // the guide and settings handle their own ESC (back to pause)
     if (game.state === 'playing') pause();
     else if (game.state === 'paused') resume();
   } else if (e.code === 'KeyM') {
@@ -167,7 +181,7 @@ function frame(now) {
   last = Math.max(last, now);
   try {
     input.pollGamepads();
-    if (ui.current !== 'scr-guide' && input.pads.some((_, i) => input.padHit(i, 9))) {
+    if (!ui.submenu && input.pads.some((_, i) => input.padHit(i, 9))) {
       if (game.state === 'playing') pause();
       else if (game.state === 'paused') resume();
     }

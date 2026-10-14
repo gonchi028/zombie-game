@@ -13,6 +13,7 @@ import { drawText } from './font.js';
 import { MotionTracker } from './tracker.js';
 import { recordRun } from './records.js';
 import { Cinematic } from './cinematic.js';
+import { settings, shakeScale, actionKey } from './settings.js';
 import { clamp, dist, dist2, rand, chance, choice, TAU, pixCircle, pixEllipse, pixRing, storage, weightedPick, makeCanvas } from './utils.js';
 
 const G = 420; // gravity for thrown things
@@ -291,6 +292,7 @@ export class Game {
   }
 
   shake(n) {
+    n *= shakeScale(); // Settings: full, low or off
     this.cam.shake = Math.min(8, Math.max(this.cam.shake, n));
   }
 
@@ -1520,7 +1522,7 @@ export class Game {
     this.particles.drawOverlay(g, cx, cy);
     if (this.state !== 'title' && this.state !== 'cinematic') this.drawWorldUI(g, cx, cy);
     this.lighting.drawVignette(g);
-    if (this.hurtFlash > 0) {
+    if (this.hurtFlash > 0 && settings.flash) {
       g.fillStyle = `rgba(150,0,0,${this.hurtFlash * 0.7})`;
       g.fillRect(0, 0, VIEW_W, VIEW_H);
     }
@@ -1899,7 +1901,7 @@ export class Game {
       const near = this.players.find((p) => p.nearDrop === w);
       if (near) {
         const label = near.ctrl.label || '';
-        const key = { GAMEPAD: 'X', TOUCH: 'TAKE' }[label] || (label.startsWith('ARROWS') ? ';' : 'F');
+        const key = { GAMEPAD: 'X', TOUCH: 'TAKE' }[label] || actionKey(label.startsWith('ARROWS') ? 'p2' : 'p1', 'pickup');
         drawText(g, `${key}: ${WEAPONS[w.id].short}`, x, y - 20, '#ffd24a', 'center');
       } else if (this.players.some((p) => p.alive && dist2(p.x, p.y, w.x, w.y) < 60 * 60)) {
         drawText(g, WEAPONS[w.id].short, x, y - 20, '#ffb84a', 'center');

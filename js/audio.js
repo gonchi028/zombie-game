@@ -1,5 +1,6 @@
 // Procedural sound effects with the Web Audio API — no audio files needed.
 import { storage } from './utils.js';
+import { settings } from './settings.js';
 
 const MIN_GAP = {
   pistol: 0.03, rifle: 0.03, smg: 0.025, shotgun: 0.05, minigun: 0.02, hit: 0.03, zdie: 0.04,
@@ -28,6 +29,10 @@ export class Sfx {
     this.master = this.ctx.createGain();
     this.master.gain.value = this.muted ? 0 : 0.55;
     this.master.connect(this.comp).connect(this.ctx.destination);
+    // sound effects go through their own volume; music (music.js) joins at the master
+    this.fx = this.ctx.createGain();
+    this.fx.gain.value = settings.sfx;
+    this.fx.connect(this.master);
     const len = this.ctx.sampleRate;
     this.noise = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
     const d = this.noise.getChannelData(0);
@@ -39,6 +44,11 @@ export class Sfx {
     storage.set('ll_muted', this.muted);
     if (this.master) this.master.gain.value = this.muted ? 0 : 0.55;
     return this.muted;
+  }
+
+  // Sound effects volume from the Settings screen (0..1).
+  setVolume(v) {
+    if (this.fx) this.fx.gain.setTargetAtTime(v, this.ctx.currentTime, 0.03);
   }
 
   // --- building blocks
@@ -87,8 +97,8 @@ export class Sfx {
     bus.gain.value = vol;
     if (panner) {
       panner.pan.value = Math.max(-1, Math.min(1, pan));
-      bus.connect(panner).connect(this.master);
-    } else bus.connect(this.master);
+      bus.connect(panner).connect(this.fx);
+    } else bus.connect(this.fx);
     this.out = bus;
     const t = now + 0.005;
     const r = Math.random;

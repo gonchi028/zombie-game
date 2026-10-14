@@ -464,6 +464,29 @@ kbd {
 .best { font-family: var(--pixel); font-size: 0.6em; color: var(--muted); margin-top: 0.6em; }
 .best.new { color: #ffd24a; animation: flicker 1.2s infinite; }
 
+/* ------------------------------------------------------------------ settings + key bindings */
+.settings { display: flex; flex-direction: column; gap: 0.45em; width: 30em; }
+.btn.setting { display: flex; align-items: center; justify-content: space-between; gap: 1em; font-size: 0.65em; padding: 0.8em 1.1em; text-align: left; }
+.set-v { color: #ffd98a; }
+.setting.link .set-v { color: var(--muted); }
+.set-v.slider { display: flex; align-items: center; gap: 0.9em; color: var(--ink); }
+.pips { display: flex; gap: calc(var(--s) * 1); }
+.pips i { width: 0.9em; height: 1.2em; background: #2a2630; box-shadow: 0 calc(var(--s) * 1) 0 #000; }
+.pips i.on { background: #ffd98a; }
+.set-n { min-width: 4.5em; text-align: right; color: #ffd98a; }
+
+.keys { display: grid; grid-template-columns: repeat(2, 25em); gap: 1.2em; align-items: start; }
+.keys-col { display: flex; flex-direction: column; gap: 0.25em; }
+.keys-title { font-family: var(--pixel); font-size: 0.5em; color: var(--weapon); margin-bottom: 0.6em; text-align: left; }
+.btn.key-row { display: flex; align-items: center; justify-content: space-between; font-size: 0.5em; padding: 0.45em 0.9em; text-align: left; }
+.btn.key-row.waiting { border-color: #ffd24a; background: #2a2414; }
+.kr-k { color: var(--muted); }
+.key-row:focus .kr-k, .key-row:hover .kr-k { color: var(--ink); }
+.kr-v kbd { font-size: 1em; }
+.kr-wait { color: #ffd24a; animation: flicker 1.2s infinite; }
+.keys-note { font-size: 1.1em; color: var(--muted); text-align: left; margin-top: 0.5em; line-height: 1.1; }
+#keys-hint { min-height: 1.2em; }
+
 /* the coming wave, under "PICK ONE" on the upgrade screen */
 .up-next { font-family: var(--pixel); font-size: 0.5em; color: var(--muted); letter-spacing: 0.05em; margin-top: -0.6em; }
 

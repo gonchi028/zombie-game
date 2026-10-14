@@ -2,6 +2,7 @@
 // Each mood (title, wave, boss, calm, over) is a looping 16-step pattern with its own bus, so moods
 // crossfade into each other. During waves, layers fade in as the horde closes in (intensity).
 import { storage, clamp } from './utils.js';
+import { settings } from './settings.js';
 
 const LOOKAHEAD = 0.25; // seconds of notes scheduled ahead of the audio clock
 const VOLUME = 0.16;
@@ -41,7 +42,7 @@ export class Music {
   build() {
     const ctx = (this.ctx = this.sfx.ctx);
     this.out = ctx.createGain();
-    this.out.gain.value = this.enabled ? VOLUME : 0;
+    this.out.gain.value = this.level();
     this.tone = ctx.createBiquadFilter(); // muffles the music while paused
     this.tone.type = 'lowpass';
     this.tone.frequency.value = 18000;
@@ -67,10 +68,18 @@ export class Music {
     }
   }
 
+  // Output gain: off, or the music volume from Settings (lower while paused).
+  level() {
+    return this.enabled ? VOLUME * settings.music * (this.paused ? 0.45 : 1) : 0;
+  }
+  fade(time = 0.15) {
+    if (this.out) this.out.gain.setTargetAtTime(this.level(), this.ctx.currentTime, time);
+  }
+
   toggle() {
     this.enabled = !this.enabled;
     storage.set('ll_music', this.enabled);
-    if (this.out) this.out.gain.setTargetAtTime(this.enabled ? VOLUME : 0, this.ctx.currentTime, 0.15);
+    this.fade();
     return this.enabled;
   }
 
@@ -101,7 +110,7 @@ export class Music {
     }
     if (paused !== this.paused) {
       this.paused = paused;
-      if (this.enabled) this.out.gain.setTargetAtTime(paused ? VOLUME * 0.45 : VOLUME, now, 0.12);
+      this.fade(0.12);
     }
 
     // intensity: how close the horde is, plus a little for how deep into the run you are

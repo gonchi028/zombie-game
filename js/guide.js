@@ -5,6 +5,7 @@ import { SPR, icon } from './sprites.js';
 import { CATEGORY } from './upgrades.js';
 import { SPECIALS, BOSS_EVERY, SPECIAL_EVERY } from './waves.js';
 import { el, pix } from './dom.js';
+import { settings, DEFAULT_KEYS, keyLabel } from './settings.js';
 
 const TIER_WAVE = { 1: 1, 2: 3, 3: 5 }; // matches pickDropWeapon() in game.js
 
@@ -46,29 +47,39 @@ const TIPS = [
   'Your flashlight follows your aim and walls block it. Glowing eyes give zombies away in the dark.',
 ];
 
-const CONTROLS = [
+// The keyboard columns follow the current bindings (Settings → Keyboard Controls).
+const keys = (scheme, action) => settings.keys[scheme][action].filter((c, i) => !i || !c.startsWith('Numpad')).map((c) => keyLabel(c));
+function moveKeys(scheme) {
+  const dirs = ['up', 'left', 'down', 'right'];
+  if (scheme === 'p2' && dirs.every((d) => settings.keys.p2[d][0] === DEFAULT_KEYS.p2[d][0])) return ['ARROWS'];
+  return [dirs.map((d) => keyLabel(settings.keys[scheme][d][0])).join(' ')];
+}
+const keyboardControls = () => [
   {
     title: 'PLAYER 1 · KEYBOARD + MOUSE',
     rows: [
-      [['W A S D'], 'move'],
+      [moveKeys('p1'), 'move'],
       [['MOUSE'], 'aim', ['LEFT CLICK'], 'shoot'],
-      [['Q', 'RIGHT CLICK'], 'ability'],
-      [['SPACE', 'L-SHIFT'], 'dash'],
-      [['R'], 'reload'],
-      [['E', 'WHEEL', '1', '2'], 'swap gun'],
-      [['F'], 'pick up gun', ['G'], 'road flare'],
+      [[...keys('p1', 'ability'), 'RIGHT CLICK'], 'ability'],
+      [keys('p1', 'dash'), 'dash'],
+      [keys('p1', 'reload'), 'reload'],
+      [[...keys('p1', 'swap'), 'WHEEL', '1', '2'], 'swap gun'],
+      [keys('p1', 'pickup'), 'pick up gun', keys('p1', 'flare'), 'road flare'],
     ],
   },
   {
-    title: 'PLAYER 2 · ARROWS (AUTO-AIM)',
+    title: 'PLAYER 2 · KEYBOARD (AUTO-AIM)',
     rows: [
-      [['ARROWS'], 'move'],
-      [['ENTER'], 'shoot (aims for you)'],
-      [['/'], 'ability', ['R-SHIFT'], 'dash'],
-      [['.'], 'reload', [','], 'swap gun'],
-      [[';'], 'pick up gun', ["'"], 'road flare'],
+      [moveKeys('p2'), 'move'],
+      [keys('p2', 'fire'), 'shoot (aims for you)'],
+      [keys('p2', 'ability'), 'ability', keys('p2', 'dash'), 'dash'],
+      [keys('p2', 'reload'), 'reload', keys('p2', 'swap'), 'swap gun'],
+      [keys('p2', 'pickup'), 'pick up gun', keys('p2', 'flare'), 'road flare'],
     ],
   },
+];
+
+const OTHER_CONTROLS = [
   {
     title: 'GAMEPAD (EITHER PLAYER)',
     rows: [
@@ -84,7 +95,7 @@ const CONTROLS = [
     rows: [
       [['LEFT SIDE'], 'drag to move'],
       [['RIGHT SIDE'], 'drag to aim, push further to shoot'],
-      ['Thumb off the right side: you face the nearest zombie and shoot it (AUTO-FIRE, in the pause menu).'],
+      ['Thumb off the right side: you face the nearest zombie and shoot it (AUTO-FIRE, in Settings).'],
       ['Buttons by your right thumb: dash, ability, reload (TAKE when a gun is in reach), swap gun and road flare. Throws land on your target.'],
       [['II'], 'pause'],
     ],
@@ -287,14 +298,14 @@ function itemsTab() {
 
 function controlsTab() {
   const grid = el('div', 'g-controls');
-  for (const col of CONTROLS) {
+  for (const col of [...keyboardControls(), ...OTHER_CONTROLS]) {
     const c = el('div', 'g-card g-ctlcol');
     c.append(el('div', 'g-title', col.title));
     for (const row of col.rows) c.append(kbdRow(row));
     grid.append(c);
   }
   const foot = el('div', 'g-desc g-foot');
-  foot.append(kbdRow([['ESC', 'P'], 'pause', ['M'], 'mute', ['N'], 'music']));
+  foot.append(kbdRow([['ESC', 'P'], 'pause', ['M'], 'mute', ['N'], 'music']), el('div', '', 'Change the keys in Settings → Keyboard Controls.'));
   return [grid, foot];
 }
 
@@ -316,14 +327,17 @@ export function buildGuide(tabBar, body, onSelect) {
     const btn = el('button', 'btn small g-tab', t.label);
     btn.dataset.tab = t.id;
     const panel = el('div', `g-panel g-${t.id}-panel`);
-    const content = t.build();
-    for (const node of [].concat(content)) panel.append(node);
+    const fill = () => {
+      panel.innerHTML = '';
+      for (const node of [].concat(t.build())) panel.append(node);
+    };
+    fill();
     // focusing a tab (keys, gamepad or hover) is enough to switch to it
     btn.addEventListener('focus', () => onSelect(t.id));
     btn.addEventListener('click', () => onSelect(t.id));
     tabBar.append(btn);
     body.append(panel);
-    return { id: t.id, btn, panel };
+    return { id: t.id, btn, panel, rebuild: fill };
   });
   return tabs;
 }

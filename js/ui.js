@@ -4,10 +4,11 @@ import { SPR, icon } from './sprites.js';
 import { UPGRADE_BY_ID, RARITY, CATEGORY } from './upgrades.js';
 import { PLAYER_COLORS } from './config.js';
 import { SPECIALS } from './waves.js';
-import { fmtInt } from './utils.js';
+import { fmtInt, clamp } from './utils.js';
 import { $, el, pix } from './dom.js';
 import { buildGuide } from './guide.js';
 import { loadRecords } from './records.js';
+import { settings, saveSettings, ACTIONS, RESERVED, SHAKE_LEVELS, bindKey, resetKeys, keyLabel, actionKey } from './settings.js';
 
 function upgradeIcon(u, scale) {
   const [name, over] = u.icon;
@@ -85,6 +86,20 @@ export class UI {
       this.h.click?.();
       this.closeGuide();
     });
+    // rebinding a key: catch the next key press before anything else sees it
+    window.addEventListener('keydown', (e) => this.onCaptureKey(e), true);
+    $('keys-reset').addEventListener('click', () => {
+      this.h.click?.();
+      resetKeys();
+      this.capturing = null;
+      this.renderKeys('BACK TO THE DEFAULT KEYS');
+      this.refreshKeyHints();
+    });
+  }
+
+  // Screens opened on top of the title or pause menu, which handle ESC / START themselves.
+  get submenu() {
+    return ['scr-guide', 'scr-settings', 'scr-keys'].includes(this.current);
   }
 
   // ------------------------------------------------------------------ screens
@@ -192,17 +207,19 @@ export class UI {
 
   refreshMute(muted) {
     this.muted = muted;
-    document.querySelectorAll('[data-action="mute"]').forEach((b) => (b.textContent = `SOUND: ${muted ? 'OFF' : 'ON'}`));
     this.renderAudioHint();
+    this.refreshSettings();
   }
 
   refreshFullscreen(on) {
+    this.fullscreenOn = on;
     document.body.classList.toggle('is-fullscreen', on);
-    document.querySelectorAll('.btn[data-action="fullscreen"]:not(.icon)').forEach((b) => (b.textContent = `FULLSCREEN: ${on ? 'ON' : 'OFF'}`));
+    this.refreshSettings();
   }
 
   refreshAutoFire(on) {
-    document.querySelectorAll('[data-action="autofire"]').forEach((b) => (b.textContent = `AUTO-FIRE: ${on ? 'ON' : 'OFF'}`));
+    this.autoFireOn = on;
+    this.refreshSettings();
   }
 
   showFullscreenTip() {
@@ -211,12 +228,144 @@ export class UI {
 
   refreshMusic(on) {
     this.musicOn = on;
-    document.querySelectorAll('[data-action="music"]').forEach((b) => (b.textContent = `MUSIC: ${on ? 'ON' : 'OFF'}`));
     this.renderAudioHint();
+    this.refreshSettings();
   }
 
   renderAudioHint() {
     $('title-sound').textContent = `[M] SOUND ${this.muted ? 'OFF' : 'ON'} · [N] MUSIC ${this.musicOn === false ? 'OFF' : 'ON'}`;
+  }
+
+  // ------------------------------------------------------------------ settings
+  // Opens from the title or the pause menu, and BACK returns there.
+  showSettings(from = this.settingsFrom) {
+    this.settingsFrom = from;
+    this.showScreen('scr-settings');
+    this.renderSettings();
+    $('settings-list').querySelector('.setting')?.focus({ preventScroll: true });
+  }
+
+  closeSettings() {
+    if (this.settingsFrom === 'pause') this.showScreen('scr-pause');
+    else this.h.back();
+  }
+
+  refreshSettings() {
+    if (this.current === 'scr-settings') this.renderSettings();
+  }
+
+  // Every row is a button. Click (or Enter / A) steps it forward, ← → (or the D-pad) change it, and a
+  // volume's pips can be clicked directly. Rebuilt after each change, keeping focus on the same row.
+  renderSettings() {
+    const list = $('settings-list');
+    const focused = [...list.children].indexOf(document.activeElement);
+    list.innerHTML = '';
+    // step(dir, wrap): change the setting; wrap is true for clicks, which go round past the last value
+    const row = (label, value, step, cls = '') => {
+      const b = el('button', `btn setting ${cls}`);
+      b.append(el('span', 'set-k', label), typeof value === 'string' ? el('span', 'set-v', value) : value);
+      b.adjust = (dir) => {
+        step(dir, false);
+        this.h.click?.();
+        this.refreshSettings();
+      };
+      b.addEventListener('click', (e) => {
+        this.h.click?.();
+        step(1, true, e.target.dataset?.level);
+        this.refreshSettings();
+      });
+      list.append(b);
+      return b;
+    };
+    const slider = (label, kind, off) => {
+      const level = Math.round(settings[kind] * 10);
+      const box = el('span', 'set-v slider');
+      const pips = el('span', 'pips');
+      for (let i = 1; i <= 10; i++) {
+        const pip = el('i', i <= level && !off ? 'on' : '');
+        pip.dataset.level = i;
+        pips.append(pip);
+      }
+      box.append(pips, el('span', 'set-n', off || `${level * 10}%`));
+      row(label, box, (dir, wrap, at) => this.h.volume(kind, (at ? Number(at) : wrap && level === 10 ? 0 : clamp(level + dir, 0, 10)) / 10));
+    };
+    slider('SOUND', 'sfx', this.muted && 'MUTED');
+    slider('MUSIC', 'music', this.musicOn === false && 'OFF');
+    const cycle = (n, dir) => (n + dir + SHAKE_LEVELS.length) % SHAKE_LEVELS.length;
+    row('SCREEN SHAKE', SHAKE_LEVELS[settings.shake].label, (dir) => {
+      settings.shake = cycle(settings.shake, dir);
+      saveSettings();
+    });
+    row('HURT FLASH', settings.flash ? 'ON' : 'OFF', () => {
+      settings.flash = !settings.flash;
+      saveSettings();
+    });
+    row('FULLSCREEN', this.fullscreenOn ? 'ON' : 'OFF', () => this.h.fullscreen(), 'fs-only');
+    row('AUTO-FIRE', this.autoFireOn === false ? 'OFF' : 'ON', () => this.h.autofire(), 'touch-only');
+    const keys = row('KEYBOARD CONTROLS', '›', () => this.showKeys(), 'kbd-only link');
+    keys.adjust = null; // ← → just move on from here
+    if (focused >= 0 && this.current === 'scr-settings') list.children[focused]?.focus({ preventScroll: true });
+  }
+
+  // ------------------------------------------------------------------ key bindings
+  showKeys() {
+    this.capturing = null;
+    this.showScreen('scr-keys');
+    this.renderKeys('CLICK AN ACTION, THEN PRESS ITS NEW KEY', 'p1:up');
+  }
+
+  renderKeys(hint, focusId) {
+    const grid = $('keys-grid');
+    grid.innerHTML = '';
+    for (const [scheme, title] of [['p1', 'PLAYER 1 · KEYBOARD + MOUSE'], ['p2', 'PLAYER 2 · KEYBOARD']]) {
+      const col = el('div', 'keys-col');
+      col.append(el('div', 'keys-title', title));
+      for (const a of ACTIONS) {
+        if (a.p2Only && scheme === 'p1') continue;
+        const id = `${scheme}:${a.id}`;
+        const waiting = this.capturing?.id === id;
+        const b = el('button', `btn key-row${waiting ? ' waiting' : ''}`);
+        b.dataset.id = id;
+        const v = el('span', 'kr-v');
+        if (waiting) v.append(el('span', 'kr-wait', 'PRESS A KEY'));
+        else for (const c of settings.keys[scheme][a.id]) v.append(el('kbd', '', keyLabel(c)));
+        b.append(el('span', 'kr-k', a.label), v);
+        b.addEventListener('click', () => {
+          this.h.click?.();
+          this.capturing = waiting ? null : { scheme, action: a.id, id };
+          this.renderKeys(waiting ? '' : `PRESS THE NEW KEY FOR ${a.label} · ESC CANCELS`, id);
+        });
+        col.append(b);
+      }
+      if (scheme === 'p1') col.append(el('div', 'keys-note', 'THE MOUSE AIMS AND SHOOTS. RIGHT CLICK: ABILITY. WHEEL, 1 AND 2: SWAP GUN.'));
+      grid.append(col);
+    }
+    $('keys-hint').textContent = hint;
+    if (focusId) grid.querySelector(`[data-id="${focusId}"]`)?.focus({ preventScroll: true });
+  }
+
+  onCaptureKey(e) {
+    if (!this.capturing || this.current !== 'scr-keys') return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    // Ctrl, Alt and Cmd stay free for browser shortcuts (Shift is fine: it's a dash key)
+    if (e.repeat || ['Control', 'Alt', 'Meta'].includes(e.key)) return;
+    const { scheme, action, id } = this.capturing;
+    if (e.code === 'Escape') {
+      this.capturing = null;
+      this.renderKeys('', id);
+      return;
+    }
+    if (RESERVED[e.code]) {
+      $('keys-hint').textContent = `${keyLabel(e.code)} IS FOR ${RESERVED[e.code]}. PICK ANOTHER KEY`;
+      return;
+    }
+    const took = bindKey(scheme, action, e.code);
+    this.capturing = null;
+    const name = (t) => `P${t.scheme.slice(1)} ${ACTIONS.find((x) => x.id === t.action).label}`;
+    this.renderKeys(took ? `${keyLabel(e.code)} WAS ${name(took)}, SO THE TWO SWAPPED` : '', id);
+    this.h.click?.();
+    this.refreshKeyHints();
   }
 
   // The guide opens from the title or the pause menu, and BACK returns to wherever it came from.
@@ -225,7 +374,7 @@ export class UI {
     if (!this.guideTabs) {
       this.guideTabs = buildGuide($('guide-tabs'), $('guide-body'), (id) => this.selectGuideTab(id));
       this.selectGuideTab(this.guideTabs[0].id);
-    }
+    } else this.guideTabs.find((t) => t.id === 'controls').rebuild(); // the keys may have been rebound
     this.showScreen('scr-guide');
     this.guideTabs.find((t) => t.id === this.guideTab).btn.focus({ preventScroll: true });
   }
@@ -307,6 +456,8 @@ export class UI {
 
   goBack() {
     if (this.current === 'scr-select' && this.selectBack) this.selectBack();
+    else if (this.current === 'scr-settings') this.closeSettings();
+    else if (this.current === 'scr-keys') this.showSettings();
     else this.h.back();
   }
 
@@ -468,15 +619,17 @@ export class UI {
       const ab = el('div', 'cd');
       ab.append(pix(icon(p.char.abilityIcon), 2));
       const abFill = el('i');
-      ab.append(abFill, el('span', 'cd-key', 'Q'));
+      // key hints, filled in by refreshKeyHints() since the keys can be rebound
+      const keys = { ability: el('span', 'cd-key'), dash: el('span', 'cd-key'), flare: el('span', 'cd-key') };
+      ab.append(abFill, keys.ability);
       const da = el('div', 'cd');
       da.append(pix(icon('dash'), 2));
       const daFill = el('i');
-      da.append(daFill, el('span', 'cd-key', 'SPC'));
+      da.append(daFill, keys.dash);
       const fl = el('div', 'cd item empty');
       fl.append(pix(icon('flare'), 2));
       const flCount = el('b', 'cd-count');
-      fl.append(flCount, el('span', 'cd-key', 'G'));
+      fl.append(flCount, keys.flare);
       const buffs = el('span', 'pp-buffs');
       cds.append(ab, da, fl, buffs);
       main.append(name, hp, wpn, cds);
@@ -492,7 +645,15 @@ export class UI {
       });
       panel.append(portrait, main, rack);
       wrap.append(panel);
-      return { panel, hpFill, hpText, mag, ammo, reserve, abFill, daFill, fl, flCount, buffs, slots, magKey: null, slot: null };
+      return { panel, hpFill, hpText, mag, ammo, reserve, abFill, daFill, fl, flCount, buffs, slots, keys, magKey: null, slot: null };
+    });
+    this.refreshKeyHints();
+  }
+
+  // P1's panel shows P1's keys, P2's panel the P2 keyboard keys.
+  refreshKeyHints() {
+    this.panels?.forEach((P, i) => {
+      for (const [action, node] of Object.entries(P.keys)) node.textContent = actionKey(`p${i + 1}`, action);
     });
   }
 
@@ -620,7 +781,8 @@ export class UI {
   // ------------------------------------------------------------------ menu navigation (keys + gamepad)
   focusables() {
     if (!this.current) return [];
-    return [...$(this.current).querySelectorAll('button:not([disabled])')];
+    // only visible ones: a hidden button (fullscreen on iPhone, auto-fire on desktop) can't take focus
+    return [...$(this.current).querySelectorAll('button:not([disabled])')].filter((b) => b.getClientRects().length);
   }
 
   moveFocus(dir) {
@@ -649,7 +811,11 @@ export class UI {
       return;
     }
     const code = e.code;
-    if (['ArrowDown', 'ArrowRight', 'KeyS', 'KeyD'].includes(code)) {
+    const side = { ArrowLeft: -1, KeyA: -1, ArrowRight: 1, KeyD: 1 }[code];
+    if (side && document.activeElement?.adjust && this.current === 'scr-settings') {
+      e.preventDefault();
+      document.activeElement.adjust(side);
+    } else if (['ArrowDown', 'ArrowRight', 'KeyS', 'KeyD'].includes(code)) {
       e.preventDefault();
       this.moveFocus(1);
     } else if (['ArrowUp', 'ArrowLeft', 'KeyW', 'KeyA'].includes(code)) {
@@ -661,10 +827,11 @@ export class UI {
       cards[n]?.click();
     } else if (code === 'Escape') {
       if (['scr-select', 'scr-records', 'scr-fstip'].includes(this.current)) this.goBack();
-      else if (this.current === 'scr-guide') {
+      else if (this.submenu) {
         // consume it, or the pause handler would see ESC on the pause menu and resume the game
         e.stopImmediatePropagation();
-        this.closeGuide();
+        if (this.current === 'scr-guide') this.closeGuide();
+        else this.goBack();
       }
     } else if (code === 'KeyR' && this.current === 'scr-upgrade') {
       this.onReroll?.();
@@ -681,16 +848,19 @@ export class UI {
     for (let i = 0; i < input.pads.length; i++) {
       const p = input.pad(i);
       const y = p.axes[1] || 0, x = p.axes[0] || 0;
-      const dir = input.padDown(i, 13) || input.padDown(i, 15) || y > 0.6 || x > 0.6 ? 1
-        : input.padDown(i, 12) || input.padDown(i, 14) || y < -0.6 || x < -0.6 ? -1 : 0;
+      const side = input.padDown(i, 15) || x > 0.6 ? 1 : input.padDown(i, 14) || x < -0.6 ? -1 : 0;
+      const dir = input.padDown(i, 13) || y > 0.6 ? 1 : input.padDown(i, 12) || y < -0.6 ? -1 : side;
       if (dir && this.padNavCd <= 0) {
         this.padNavCd = 0.22;
-        this.moveFocus(dir);
+        // left / right change a setting; everything else moves between buttons
+        const adjust = this.current === 'scr-settings' && side && dir === side && document.activeElement?.adjust;
+        if (adjust) adjust(side);
+        else this.moveFocus(dir);
       }
       if (!dir && Math.abs(x) < 0.3 && Math.abs(y) < 0.3 && !input.padDown(i, 12) && !input.padDown(i, 13) && !input.padDown(i, 14) && !input.padDown(i, 15)) this.padNavCd = 0;
       if (input.padHit(i, 0)) document.activeElement?.click?.();
       if (input.padHit(i, 1)) {
-        if (['scr-select', 'scr-records', 'scr-fstip'].includes(this.current)) this.goBack();
+        if (['scr-select', 'scr-records', 'scr-fstip', 'scr-settings', 'scr-keys'].includes(this.current)) this.goBack();
         else if (this.current === 'scr-guide') this.closeGuide();
         else if (this.current === 'scr-pause') this.h.resume();
       }

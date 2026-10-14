@@ -59,6 +59,7 @@
         <button class="btn" data-action="coop">2 PLAYERS · CO-OP</button>
         <button class="btn" data-action="guide">HOW TO PLAY</button>
         <button class="btn" data-action="records">RECORDS</button>
+        <button class="btn" data-action="settings">SETTINGS</button>
         <button class="btn" data-action="intro">WATCH INTRO</button>
       </div>
       <div class="press-start"><span class="kbd-only">PRESS ANY KEY</span><span class="touch-only">TAP TO START</span></div>
@@ -113,11 +114,8 @@
       <div class="menu">
         <button class="btn primary" data-action="resume">RESUME</button>
         <button class="btn" data-action="guide">HOW TO PLAY</button>
+        <button class="btn" data-action="settings">SETTINGS</button>
         <button class="btn" data-action="restart">RESTART</button>
-        <button class="btn" data-action="mute">SOUND: ON</button>
-        <button class="btn" data-action="music">MUSIC: ON</button>
-        <button class="btn fs-only" data-action="fullscreen">FULLSCREEN: OFF</button>
-        <button class="btn touch-only" data-action="autofire">AUTO-FIRE: ON</button>
         <button class="btn" data-action="quit">QUIT TO TITLE</button>
       </div>
       <div class="owned" id="pause-owned"></div>
@@ -131,6 +129,24 @@
         <button class="btn" data-action="quit">TITLE</button>
       </div>
       <div class="owned" id="over-owned"></div>
+    </section>
+
+    <!-- built by ui.js: volumes, screen shake, hurt flash, fullscreen, auto-fire and a link to the key bindings -->
+    <section id="scr-settings" class="screen dim">
+      <h2>SETTINGS</h2>
+      <div class="settings" id="settings-list"></div>
+      <div class="hint kbd-only">← → CHANGE · ESC BACK</div>
+      <button class="btn small" data-action="back">BACK</button>
+    </section>
+
+    <section id="scr-keys" class="screen dim">
+      <h2>KEYBOARD CONTROLS</h2>
+      <div class="keys" id="keys-grid"></div>
+      <div class="hint" id="keys-hint"></div>
+      <div class="menu row">
+        <button class="btn small" id="keys-reset">RESET TO DEFAULTS</button>
+        <button class="btn small" data-action="back">BACK</button>
+      </div>
     </section>
 
     <section id="scr-guide" class="screen dim">

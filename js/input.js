@@ -1,6 +1,7 @@
 // Keyboard, mouse and gamepad state, plus per-player "controllers" that turn raw input into intents.
 import { VIEW_W, VIEW_H } from './config.js';
 import { dist2 } from './utils.js';
+import { settings, boundTo } from './settings.js';
 
 const BLOCK_DEFAULT = new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'Slash', 'Quote']);
 
@@ -14,7 +15,9 @@ export class Input {
     this.prevPadButtons = [];
 
     window.addEventListener('keydown', (e) => {
-      if (BLOCK_DEFAULT.has(e.code) && !(e.target instanceof HTMLButtonElement && e.code === 'Space')) e.preventDefault();
+      // game keys (rebound ones too) shouldn't scroll the page or open quick find; Ctrl/Cmd shortcuts still work
+      const gameKey = BLOCK_DEFAULT.has(e.code) || (!e.ctrlKey && !e.metaKey && boundTo(e.code));
+      if (gameKey && !(e.target instanceof HTMLButtonElement && (e.code === 'Space' || e.code === 'Enter'))) e.preventDefault();
       if (!this.keys.has(e.code)) this.pressed.add(e.code);
       this.keys.add(e.code);
     });
@@ -58,6 +61,13 @@ export class Input {
   }
   anyHit(...codes) {
     return codes.some((c) => this.pressed.has(c));
+  }
+  // Rebindable keys (settings.js): is any key bound to this action held / just pressed?
+  actionDown(scheme, action) {
+    return settings.keys[scheme][action].some((c) => this.keys.has(c));
+  }
+  actionHit(scheme, action) {
+    return settings.keys[scheme][action].some((c) => this.pressed.has(c));
   }
 
   pollGamepads() {
@@ -108,7 +118,7 @@ const stick = (x, y) => {
   return [x * k, y * k];
 };
 
-// WASD + mouse
+// Keyboard (WASD by default, rebindable in settings.js) + mouse
 export class KeyboardMouseController {
   constructor(input) {
     this.input = input;
@@ -121,25 +131,26 @@ export class KeyboardMouseController {
   read(player, game) {
     const i = this.input;
     const o = emptyIntent();
-    o.mx = (i.down('KeyD') ? 1 : 0) - (i.down('KeyA') ? 1 : 0);
-    o.my = (i.down('KeyS') ? 1 : 0) - (i.down('KeyW') ? 1 : 0);
+    const down = (a) => i.actionDown('p1', a), hit = (a) => i.actionHit('p1', a);
+    o.mx = (down('right') ? 1 : 0) - (down('left') ? 1 : 0);
+    o.my = (down('down') ? 1 : 0) - (down('up') ? 1 : 0);
     const wx = i.mouse.x + game.cam.x;
     const wy = i.mouse.y + game.cam.y;
     o.aim = Math.atan2(wy - (player.y - 3), wx - player.x);
     o.aimDist = Math.hypot(wx - player.x, wy - player.y);
     o.useCursor = true;
     o.fire = i.mouse.down;
-    o.reload = i.hit('KeyR');
-    o.dash = i.hit('Space') || i.hit('ShiftLeft');
-    o.ability = i.hit('KeyQ') || i.mouse.rpressed;
-    o.flare = i.hit('KeyG');
-    o.interact = i.hit('KeyF');
-    o.swap = i.mouse.wheel !== 0 || i.hit('KeyE') ? 1 : i.hit('Digit1') ? -10 : i.hit('Digit2') ? -11 : 0;
+    o.reload = hit('reload');
+    o.dash = hit('dash');
+    o.ability = hit('ability') || i.mouse.rpressed;
+    o.flare = hit('flare');
+    o.interact = hit('pickup');
+    o.swap = i.mouse.wheel !== 0 || hit('swap') ? 1 : i.hit('Digit1') ? -10 : i.hit('Digit2') ? -11 : 0;
     return o;
   }
 }
 
-// Arrow keys with auto-aim (keyboard fallback for player 2)
+// Arrow keys (by default) with auto-aim: the keyboard fallback for player 2
 export class ArrowsController {
   constructor(input) {
     this.input = input;
@@ -149,18 +160,19 @@ export class ArrowsController {
   read(player, game) {
     const i = this.input;
     const o = emptyIntent();
-    o.mx = (i.down('ArrowRight') ? 1 : 0) - (i.down('ArrowLeft') ? 1 : 0);
-    o.my = (i.down('ArrowDown') ? 1 : 0) - (i.down('ArrowUp') ? 1 : 0);
+    const down = (a) => i.actionDown('p2', a), hit = (a) => i.actionHit('p2', a);
+    o.mx = (down('right') ? 1 : 0) - (down('left') ? 1 : 0);
+    o.my = (down('down') ? 1 : 0) - (down('up') ? 1 : 0);
     if (o.mx || o.my) this.lastAim = Math.atan2(o.my, o.mx);
     const target = nearestTarget(player, game, 190);
     o.aim = target ? Math.atan2(target.y - 4 - (player.y - 3), target.x - player.x) : this.lastAim;
-    o.fire = i.down('Enter') || i.down('NumpadEnter') || i.down('Numpad0');
-    o.dash = i.hit('ShiftRight');
-    o.ability = i.hit('Slash');
-    o.flare = i.hit('Quote');
-    o.interact = i.hit('Semicolon');
-    o.reload = i.hit('Period');
-    o.swap = i.hit('Comma') ? 1 : 0;
+    o.fire = down('fire');
+    o.dash = hit('dash');
+    o.ability = hit('ability');
+    o.flare = hit('flare');
+    o.interact = hit('pickup');
+    o.reload = hit('reload');
+    o.swap = hit('swap') ? 1 : 0;
     return o;
   }
 }

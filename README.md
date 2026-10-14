@@ -71,6 +71,9 @@ no dependencies. Open it in a browser and play.
   to the Home Screen, where it opens fullscreen and in landscape like an app.
 - **Plays offline.** After your first visit the whole game is cached, so it runs with no connection,
   from the browser or the Home Screen.
+- **Settings** for sound and music volume, screen shake (full, low or off), the red hurt flash,
+  fullscreen and auto-fire, plus **rebindable keys** for both keyboard players. Key names follow
+  your keyboard layout, so on AZERTY the default keys show as Z Q S D.
 - **Know what hit you.** A red marker points at whatever just hurt you, even in the fog or the dark.
   The game-over screen says what killed you and shows each survivor's build.
 - **A built-in How to Play guide** covering every survivor, weapon, zombie, wave type, pickup and
@@ -288,9 +291,16 @@ other three.
 | Road flare | `G` | `'` | B | Flare button |
 | Pause | `Esc` / `P` | | Start | `II` in the top-left corner |
 
-`M` mutes everything and `N` turns the music on or off. Both are remembered between visits. On the
-upgrade screen, press `1` `2` `3` to pick a card and `R` to reroll. Menus work
-with the mouse, the arrow keys, a gamepad's D-pad or a tap.
+These are the default keys. Both keyboard players can rebind theirs in **Settings → Keyboard
+Controls**: pick an action, then press its new key. A key that's already in use swaps with the
+action that had it, and Reset brings the defaults back. `Esc`, `P`, `M` and `N` stay reserved, and
+the mouse buttons, wheel and `1` `2` keep their jobs.
+
+`M` mutes everything and `N` turns the music on or off. Both are remembered between visits, along
+with everything on the **Settings** screen (title menu or pause menu): sound and music volume,
+screen shake, the hurt flash, fullscreen and auto-fire. On the upgrade screen, press `1` `2` `3` to
+pick a card and `R` to reroll. Menus work with the mouse, the arrow keys, a gamepad's D-pad or a
+tap; on the Settings screen, left and right change the setting.
 
 The touch controls show up when you touch the screen, and go away when you move a mouse. They cover
 the whole screen, including the black bars at the sides of wide phones. The move and aim sticks
@@ -298,14 +308,14 @@ appear wherever your thumbs land and stay there until you lift. The aim stick ha
 little aim assist: it locks on to a zombie within about 20° of where you point.
 
 With your thumb off the aim stick, you face the nearest zombie in sight and **auto-fire** at it once
-it's in range, so your right thumb is free for the buttons. Turn auto-fire off in the pause menu if
+it's in range, so your right thumb is free for the buttons. Turn auto-fire off in Settings if
 you'd rather only shoot with the aim stick. Grenades, Molotovs and flares land on the zombie you're
 aiming at; Ivy's turret always lands next to her. In co-op on a tablet, player 2 uses a gamepad.
 
 On phones, the first "back" (such as Safari's edge swipe) pauses the run instead of leaving the page.
 
-For fullscreen, tap the corner button on the title screen or next to the pause button (on desktop,
-it's also in the pause menu). iPhones don't let web pages go fullscreen, so there the button explains
+For fullscreen, tap the corner button on the title screen or next to the pause button (it's also in
+Settings). iPhones don't let web pages go fullscreen, so there the button explains
 how to add Last Light to the Home Screen instead: tap Share, then **Add to Home Screen**.
 
 ## Under the hood
@@ -369,7 +379,8 @@ js/
   input.js          keyboard, mouse, gamepad and touch input, plus per-player controllers
   touch.js          on-screen sticks and buttons for phones and tablets
   fullscreen.js     fullscreen toggle (with the prefixed API older iPads need)
-  ui.js             menus, upgrade cards, HUD and weapon rack
+  ui.js             menus, upgrade cards, HUD, weapon rack, settings and key binding screens
+  settings.js       volumes, screen shake, hurt flash and key bindings, saved in the browser
   records.js        lifetime records saved after every game over (shown on the Records screen)
   guide.js          the How to Play screen, built from the game's own data and sprites
   dom.js            small DOM helpers shared by the menus and the guide
